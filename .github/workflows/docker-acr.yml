@@ -7,12 +7,18 @@ on:
     tags:
       - "v*"
     paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".gitattributes"
       - "amusement_stats/**"
       - ".github/workflows/docker-acr.yml"
   pull_request:
     branches:
       - main
     paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".gitattributes"
       - "amusement_stats/**"
       - ".github/workflows/docker-acr.yml"
   workflow_dispatch:

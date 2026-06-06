@@ -8,6 +8,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DJANGO_DB_PATH=/app/data/db.sqlite3 \
     DJANGO_MEDIA_ROOT=/app/media \
     DJANGO_STATIC_ROOT=/app/staticfiles \
+    PARKPULSE_IMAGE_REV=db-permission-preflight-20260607 \
     PORT=8000
 
 WORKDIR /app
