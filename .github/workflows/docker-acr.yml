@@ -6,12 +6,19 @@ on:
       - main
     tags:
       - "v*"
+    paths:
+      - "amusement_stats/**"
+      - ".github/workflows/docker-acr.yml"
   pull_request:
     branches:
       - main
+    paths:
+      - "amusement_stats/**"
+      - ".github/workflows/docker-acr.yml"
   workflow_dispatch:
 
 env:
+  PROJECT_DIR: amusement_stats
   IMAGE_REPOSITORY: crpi-9gmsq2s17re73ia9.cn-qingdao.personal.cr.aliyuncs.com/yyh163/parkpulse-analytics
 
 jobs:
@@ -20,6 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    defaults:
+      run:
+        working-directory: ${{ env.PROJECT_DIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,6 +39,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+          cache-dependency-path: ${{ env.PROJECT_DIR }}/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -78,8 +89,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: Dockerfile
+          context: ${{ env.PROJECT_DIR }}
+          file: ${{ env.PROJECT_DIR }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
