@@ -1,0 +1,36 @@
+{# 游客端行程规划详情页：展示模板说明与完整游玩顺序，不再展示地图相关内容。 #}
+{% extends "visitor/base.html" %}
+{% block title %}行程详情{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+    <div>
+      <h1 class="h3 fw-bold mb-1">{{ plan.name }}</h1>
+      <div class="small text-muted">适用人群：{{ plan.get_audience_display }}{% if plan.preference_tag %} · 偏好：{{ plan.preference_tag }}{% endif %}</div>
+    </div>
+    <a class="btn btn-sm btn-outline-secondary" href="{{ back_url }}">返回行程列表</a>
+  </div>
+
+  {% if plan.description %}
+    <div class="visitor-card p-3 mb-3 small text-muted">{{ plan.description }}</div>
+  {% endif %}
+
+  <section class="visitor-card p-3 p-md-4">
+    <h2 class="h5 mb-3">设施游玩顺序</h2>
+    {% if items %}
+      <ol class="itinerary-steps mb-0">
+        {% for item in items %}
+          <li class="itinerary-step-item">
+            <div class="itinerary-step-badge">{{ item.seq }}</div>
+            <div>
+              <a class="fw-semibold text-decoration-none" href="{% url 'visitor_project_detail' item.project.id %}">{{ item.project.name }}</a>
+              {% if item.tip %}<div class="small text-muted mt-1">{{ item.tip }}</div>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <div class="small text-muted">当前模板暂无行程节点。</div>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,92 @@
+﻿{% extends "visitor/base.html" %}
+{% load static %}
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'visitor_index' %}">首页</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'visitor_project_list' %}">游乐项目</a></li>
+      <li class="breadcrumb-item active" aria-current="page">{{ project.name }}</li>
+    </ol>
+  </nav>
+
+  <div class="visitor-card p-0 mb-4 overflow-hidden">
+    <div class="ratio ratio-16x9 bg-light">
+      {% if project.cover_image %}
+        <img src="{{ project.cover_image.url }}" alt="{{ project.name }}" class="object-fit-cover w-100 h-100" />
+      {% else %}
+        <img src="{% static 'img/project-placeholder.svg' %}" alt="" class="object-fit-cover w-100 h-100 opacity-75" />
+      {% endif %}
+    </div>
+
+    <div class="p-4 p-md-5">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+        <div class="flex-grow-1">
+          <h1 class="h3 fw-bold mb-2">{{ project.name }}</h1>
+          <div class="text-muted small">
+            {{ project.get_project_type_display }} ·
+            {% with er=project.effective_region %}
+              {% for val, label in region_choices %}
+                {% if val == er %}{{ label }}{% endif %}
+              {% endfor %}
+            {% endwith %}
+          </div>
+        </div>
+
+        <div class="d-flex flex-column align-items-end gap-2">
+          <span class="badge fs-6 {% if project.status == 'normal' %}text-bg-success{% elif project.status == 'maintenance' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+            {{ project.get_status_display }}
+          </span>
+          {% if user.is_authenticated %}
+            <form class="m-0" method="post" action="{% url 'visitor_favorite_toggle' %}">
+              {% csrf_token %}
+              <input type="hidden" name="project_id" value="{{ project.id }}" />
+              <input type="hidden" name="next" value="{{ request.path }}" />
+              {% if is_favorited %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">取消收藏</button>
+              {% else %}
+                <button type="submit" class="btn btn-sm btn-primary">收藏本项目</button>
+              {% endif %}
+            </form>
+          {% else %}
+            <span class="small text-muted"><a href="{% url 'login' %}?next={{ request.path|urlencode }}">登录</a>后可收藏</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if project.short_description %}
+        <p class="lead fs-6 text-body mb-4">{{ project.short_description }}</p>
+      {% endif %}
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+            <h2 class="h6 fw-bold mb-2">排队与游玩信息</h2>
+            <ul class="small text-muted mb-0 ps-3">
+              <li>当前排队人数：<strong>{{ project.queue_count }}</strong> 人</li>
+              <li>单轮游玩时长：<strong>{{ project.cycle_minutes }}</strong> 分钟</li>
+              <li>运营时间：<strong>{{ project.operating_hours_text|default:"以现场公告为准" }}</strong></li>
+              <li>瞬时承载量参考：<strong>{{ project.capacity }}</strong> 人（现场调度为准）</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+            <h2 class="h6 fw-bold mb-2">游园提示</h2>
+            <ul class="small text-muted mb-0 ps-3">
+              <li>客流高峰时可能采取限流或分流，请听从现场工作人员引导。</li>
+              <li>“人气参考”仅反映近期热度档位，不等同于实时拥挤度。</li>
+              <li>请根据自身健康状况选择项目并遵守安全须知。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-4">
+        <a class="btn btn-outline-primary" href="{% url 'visitor_project_list' %}">返回项目列表</a>
+      </div>
+    </div>
+  </div>
+{% endblock %}

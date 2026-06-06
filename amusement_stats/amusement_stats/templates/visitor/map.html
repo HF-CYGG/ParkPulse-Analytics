@@ -1,0 +1,13 @@
+{% extends "visitor/base.html" %}
+{% block title %}园区地图{% endblock %}
+{% block content %}
+  <div class="mb-4">
+    <h1 class="h3 fw-bold mb-2">园区地图</h1>
+    <p class="text-muted small mb-0">
+      简易示意地图（OpenStreetMap）。未填写坐标的项目按所属区域在示意点位附近自动偏移，可在管理端编辑中补充经纬度以贴合实际位置。
+    </p>
+  </div>
+  <div class="visitor-card p-2 shadow-sm overflow-hidden rounded-3">
+    {{ map_html|safe }}
+  </div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}删除项目 - ParkPulse Analytics{% endblock %}
+{% block page_title %}删除游乐项目{% endblock %}
+
+{% block content %}
+  <div class="card shadow-sm border-0 border-danger border-opacity-25">
+    <div class="card-body">
+      <h4 class="text-danger mb-3">确认删除该项目？</h4>
+      <p class="mb-2"><strong>{{ project.name }}</strong></p>
+      <p class="text-muted small mb-3">
+        数据库中本项目关联的<strong>游玩记录</strong>共 <strong>{{ record_count }}</strong> 条，将随项目一并<strong>永久删除</strong>（外键级联），此操作不可恢复。
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-danger">确认删除</button>
+        <a class="btn btn-outline-secondary ms-2" href="{% url 'project_list' %}">取消</a>
+      </form>
+    </div>
+  </div>
+{% endblock %}

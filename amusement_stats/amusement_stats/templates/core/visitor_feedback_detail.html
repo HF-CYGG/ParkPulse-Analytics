@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}反馈详情 - ParkPulse Analytics{% endblock %}
+{% block page_title %}游园反馈详情{% endblock %}
+
+{% block content %}
+  <div class="feedback-admin-wrap">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <a class="btn btn-outline-secondary btn-sm" href="{% url 'visitor_feedback_manage' %}">返回列表</a>
+      <div class="d-flex gap-2 align-items-center">
+        {% if feedback.status == 'resolved' %}
+          <span class="badge text-bg-success">已处理</span>
+        {% else %}
+          <span class="badge text-bg-warning text-dark">待处理</span>
+        {% endif %}
+        <form method="post" class="d-inline">
+          {% csrf_token %}
+          {% if feedback.status != 'resolved' %}
+            <input type="hidden" name="op" value="resolve" />
+            <button class="btn btn-sm btn-outline-success" type="submit">标记已处理</button>
+          {% else %}
+            <input type="hidden" name="op" value="reopen" />
+            <button class="btn btn-sm btn-outline-warning" type="submit">改为待处理</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-4">
+        <div class="card shadow-sm border-0 h-100">
+          <div class="card-body">
+            <h6 class="text-uppercase text-muted small mb-3">反馈基础信息</h6>
+            <h5 class="mb-2">{{ feedback.title|default:"（无标题）" }}</h5>
+            <div class="small text-muted mb-3">提交于 {{ feedback.created_at|date:"Y-m-d H:i" }}</div>
+
+            <div class="feedback-meta-row"><span>提交用户</span><strong>{{ feedback.user.username }}</strong></div>
+            <div class="feedback-meta-row"><span>联系方式</span><strong>{{ feedback.contact|default:"—" }}</strong></div>
+            <div class="feedback-meta-row"><span>会话状态</span><strong>{% if feedback.status == 'resolved' %}已处理{% else %}待处理{% endif %}</strong></div>
+            {% if feedback.resolved_at %}
+              <div class="feedback-meta-row"><span>处理时间</span><strong>{{ feedback.resolved_at|date:"Y-m-d H:i" }}</strong></div>
+            {% endif %}
+
+            <hr />
+            <h6 class="small text-muted text-uppercase mb-2">原始反馈</h6>
+            <div class="feedback-origin">{{ feedback.content|linebreaksbr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-8">
+        <div class="card shadow-sm border-0 mb-3">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="mb-0">会话记录</h6>
+              <span class="small text-muted">共 {{ messages|length }} 条消息</span>
+            </div>
+            <div class="feedback-thread">
+              {% for msg in messages %}
+                <div class="feedback-bubble {% if msg.sender == 'admin' %}feedback-bubble-admin{% else %}feedback-bubble-visitor{% endif %}">
+                  <div class="feedback-bubble-head">
+                    <strong>{% if msg.sender == 'admin' %}管理员{% else %}游客{% endif %}</strong>
+                    <span>{{ msg.created_at|date:"m-d H:i" }}</span>
+                  </div>
+                  <div class="feedback-bubble-body">{{ msg.content|linebreaksbr }}</div>
+                </div>
+              {% empty %}
+                <div class="text-muted">暂无消息。</div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+          <div class="card-body">
+            <h6 class="mb-3">回复游客</h6>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="op" value="reply" />
+              <textarea class="form-control mb-2 feedback-reply-area" rows="4" name="reply_content" placeholder="请输入回复内容"></textarea>
+              <button class="btn btn-primary" type="submit">发送回复</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

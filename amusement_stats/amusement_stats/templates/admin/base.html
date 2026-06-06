@@ -1,0 +1,137 @@
+{% load i18n static %}
+<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+<html lang="{{ LANGUAGE_CODE|default:'zh-hans' }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{% block stylesheet %}{% static 'admin/css/base.css' %}{% endblock %}">
+  {% block dark-mode-vars %}
+    <link rel="stylesheet" href="{% static 'admin/css/dark_mode.css' %}">
+    <script src="{% static 'admin/js/theme.js' %}"></script>
+  {% endblock %}
+  {% if not is_popup and is_nav_sidebar_enabled %}
+    <link rel="stylesheet" href="{% static 'admin/css/nav_sidebar.css' %}">
+    <script src="{% static 'admin/js/nav_sidebar.js' %}" defer></script>
+  {% endif %}
+  <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/admin_custom.css' %}" />
+  {% block extrastyle %}{% endblock %}
+  {% if LANGUAGE_BIDI %}
+    <link rel="stylesheet" href="{% block stylesheet_rtl %}{% static 'admin/css/rtl.css' %}{% endblock %}">
+  {% endif %}
+  {% block extrahead %}{% endblock %}
+  {% block responsive %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'admin/css/responsive.css' %}">
+    {% if LANGUAGE_BIDI %}<link rel="stylesheet" href="{% static 'admin/css/responsive_rtl.css' %}">{% endif %}
+  {% endblock %}
+  {% block blockbots %}<meta name="robots" content="NONE,NOARCHIVE">{% endblock %}
+</head>
+
+<body class="app-body admin-embedded {% if is_popup %}popup{% endif %} {% block bodyclass %}{% endblock %}" data-admin-utc-offset="{% now 'Z' %}">
+<a href="#content-start" class="skip-to-content-link">{% translate 'Skip to main content' %}</a>
+
+{% if not is_popup %}
+  <div class="admin-shell">
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="fw-bold text-white">Operations Console</div>
+        <div class="small text-white-50">数据驱动管理</div>
+      </div>
+      <div class="sidebar-section-title">核心模块</div>
+      <nav class="sidebar-nav">
+        <a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="/"><span class="sidebar-icon">▦</span><span>看板总览</span></a>
+        <a class="sidebar-link {% if '/records/' in request.path %}active{% endif %}" href="/records/new/"><span class="sidebar-icon">✎</span><span>游玩记录管理</span></a>
+        <a class="sidebar-link {% if '/projects/' in request.path %}active{% endif %}" href="/projects/"><span class="sidebar-icon">◫</span><span>游乐项目管理</span></a>
+      </nav>
+      <div class="sidebar-section-title mt-3">系统配置</div>
+      <nav class="sidebar-nav">
+        <a class="sidebar-link {% if request.path == '/settings/' or '/admin/' in request.path %}active{% endif %}" href="/settings/"><span class="sidebar-icon">⚙</span><span>系统管理</span></a>
+        <a class="sidebar-link {% if request.path == '/settings/ui/' %}active{% endif %}" href="/settings/ui/"><span class="sidebar-icon">☼</span><span>界面与参数设置</span></a>
+        <a class="sidebar-link {% if '/accounts/users/' in request.path %}active{% endif %}" href="/accounts/users/"><span class="sidebar-icon">@</span><span>用户与角色管理</span></a>
+        <a class="sidebar-link {% if '/visitor-feedback/' in request.path %}active{% endif %}" href="/visitor-feedback/"><span class="sidebar-icon">✉</span><span>游园反馈管理</span></a>
+        <a class="sidebar-link {% if '/settings/itinerary/' in request.path %}active{% endif %}" href="/settings/itinerary/"><span class="sidebar-icon">☷</span><span>行程规划管理</span></a>
+        <a class="sidebar-link {% if '/audit/' in request.path %}active{% endif %}" href="/audit/"><span class="sidebar-icon">☷</span><span>操作审计日志</span></a>
+      </nav>
+      <div class="sidebar-footer">
+        <form class="m-0" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-light w-100">退出登录</button>
+        </form>
+      </div>
+    </aside>
+
+    <div class="admin-main">
+      <header class="app-header border-bottom bg-white sticky-top">
+        <div class="container-fluid px-4 py-3 d-flex align-items-center justify-content-between">
+          <div class="d-flex align-items-center gap-2">
+            <button id="sidebarToggleBtn" class="btn btn-sm btn-outline-secondary" type="button">折叠菜单</button>
+            <div>
+              <a class="navbar-brand fw-bold text-primary" href="/">ParkPulse Analytics</a>
+              <div class="small text-muted">热门项目统计 · 客流分析 · 运维协同</div>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+            <button id="themeToggleBtn" class="btn btn-sm btn-outline-secondary" type="button">深色模式</button>
+            <div class="small text-muted">当前用户：{{ user.username }}</div>
+          </div>
+        </div>
+      </header>
+
+      <main class="container-fluid px-4 py-4">
+{% endif %}
+
+<div id="container" class="{% if not is_popup %}admin-outer-container{% endif %}">
+  <div class="main" id="main">
+    <main id="content-start" class="content" tabindex="-1">
+      {% block messages %}
+        {% if messages %}
+          <ul class="messagelist">{% for message in messages %}
+            <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message|capfirst }}</li>
+          {% endfor %}</ul>
+        {% endif %}
+      {% endblock messages %}
+
+      {% if not is_popup %}
+        <div class="mb-3">
+          <div class="admin-pathbar">
+            <span class="admin-pathbar-label">当前位置：</span>
+            {% block nav-breadcrumbs %}
+              {% block breadcrumbs %}
+                <span class="admin-pathbar-text">系统管理{% if title %} / {{ title }}{% endif %}</span>
+              {% endblock %}
+            {% endblock %}
+          </div>
+        </div>
+      {% endif %}
+
+      <div id="content" class="{% block coltype %}colM{% endblock %}">
+        {% block pretitle %}{% endblock %}
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <button class="btn btn-sm btn-outline-secondary" type="button" onclick="history.back()">返回上一页</button>
+        </div>
+        {% block content_title %}{% if title %}<h1 class="h3 mb-3">{{ title }}</h1>{% endif %}{% endblock %}
+        {% block content_subtitle %}{% if subtitle %}<h2 class="h6 text-muted">{{ subtitle }}</h2>{% endif %}{% endblock %}
+        {% block content %}
+          {% block object-tools %}{% endblock %}
+          {{ content }}
+        {% endblock %}
+        {% block sidebar %}{% endblock %}
+        <br class="clear">
+      </div>
+    </main>
+  </div>
+</div>
+
+{% if not is_popup %}
+      </main>
+    </div>
+  </div>
+{% endif %}
+
+<script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+{% block extrabody %}{% endblock extrabody %}
+</body>
+</html>

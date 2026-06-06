@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block extra_head %}
+  <meta http-equiv="refresh" content="20" />
+{% endblock %}
+
+{% block title %}游园反馈管理 - ParkPulse Analytics{% endblock %}
+{% block page_title %}游园反馈管理{% endblock %}
+
+{% block content %}
+  <div class="feedback-admin-wrap">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+      <p class="text-muted small mb-0">会话列表页，点击“查看详情”进入完整对话并回复。页面每 20 秒自动刷新。</p>
+      <form class="d-flex align-items-center gap-2" method="get">
+        <select class="form-select form-select-sm" name="status" style="width: auto" onchange="this.form.submit()">
+          <option value="">全部状态</option>
+          {% for val, label in status_choices %}
+            <option value="{{ val }}" {% if status_filter == val %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+        {% if status_filter %}
+          <a class="btn btn-sm btn-outline-secondary" href="{% url 'visitor_feedback_manage' %}">清除筛选</a>
+        {% endif %}
+      </form>
+    </div>
+
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0 small feedback-admin-table">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 140px;">提交时间</th>
+                <th style="width: 120px;">提交用户</th>
+                <th style="width: 140px;">标题</th>
+                <th>反馈摘要</th>
+                <th style="width: 240px;">最新会话</th>
+                <th style="width: 140px;">联系方式</th>
+                <th style="width: 130px;">状态</th>
+                <th style="width: 220px;" class="text-end">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in feedback_rows %}
+                {% with fb=row.fb %}
+                <tr>
+                  <td class="text-nowrap">{{ fb.created_at|date:"Y-m-d H:i" }}</td>
+                  <td>{{ fb.user.username }}</td>
+                  <td>{{ fb.title|default:"（无标题）" }}</td>
+                  <td class="text-break" style="max-width: 420px;">{{ fb.content|truncatechars:120 }}</td>
+                  <td>
+                    {% if row.last_msg %}
+                      <div class="small {% if row.last_msg.sender == 'visitor' %}text-warning-emphasis{% else %}text-secondary{% endif %}">
+                        {% if row.last_msg.sender == 'visitor' %}游客{% else %}管理员{% endif %} · {{ row.last_msg.created_at|date:"m-d H:i" }}
+                      </div>
+                      <div class="small text-muted">{{ row.last_msg.content|truncatechars:70 }}</div>
+                      {% if row.unread_cnt > 0 %}
+                        <span class="badge text-bg-danger mt-1">未读 {{ row.unread_cnt }}</span>
+                      {% endif %}
+                    {% else %}
+                      <span class="text-muted small">暂无会话消息</span>
+                    {% endif %}
+                  </td>
+                  <td>{{ fb.contact|default:"—" }}</td>
+                  <td>
+                    {% if fb.status == 'resolved' %}
+                      <span class="badge text-bg-success">已处理</span>
+                      {% if fb.resolved_at %}
+                        <div class="text-muted mt-1" style="font-size: 0.7rem;">{{ fb.resolved_at|date:"m-d H:i" }}</div>
+                      {% endif %}
+                    {% else %}
+                      <span class="badge text-bg-warning text-dark">待处理</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end text-nowrap">
+                    <a class="btn btn-sm btn-primary" href="{% url 'visitor_feedback_detail' fb.id %}">查看详情</a>
+                    <form method="post" class="d-inline" onsubmit="return confirm('确定删除这条反馈吗？');">
+                      {% csrf_token %}
+                      <input type="hidden" name="op" value="delete" />
+                      <input type="hidden" name="feedback_id" value="{{ fb.id }}" />
+                      <button type="submit" class="btn btn-sm btn-outline-danger">删除</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endwith %}
+              {% empty %}
+                <tr>
+                  <td colspan="8" class="text-center text-muted py-5">暂无反馈记录。</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

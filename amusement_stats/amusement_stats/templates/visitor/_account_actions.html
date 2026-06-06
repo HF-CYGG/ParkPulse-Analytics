@@ -1,0 +1,38 @@
+{% if mode == "nav" %}
+  {% if not user.is_authenticated %}
+    <li class="nav-item">
+      <a class="nav-link" href="{% url 'login' %}">工作人员登录</a>
+    </li>
+  {% elif is_admin %}
+    <li class="nav-item">
+      <a class="nav-link fw-semibold text-primary" href="/">进入管理后台</a>
+    </li>
+  {% elif is_staff_or_admin %}
+    <li class="nav-item">
+      <a class="nav-link fw-semibold text-primary" href="{% url 'staff_workbench' %}">进入工作台</a>
+    </li>
+  {% else %}
+    <li class="nav-item d-flex flex-wrap align-items-center gap-2 ms-lg-1">
+      <form class="m-0" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-sm btn-outline-secondary">退出</button>
+      </form>
+    </li>
+  {% endif %}
+{% else %}
+  {% if not user.is_authenticated %}
+    <a class="btn btn-outline-secondary rounded-3" href="{% url 'login' %}">工作人员登录</a>
+  {% elif is_admin %}
+    <a class="btn btn-outline-primary rounded-3" href="/">进入管理后台</a>
+  {% elif is_staff_or_admin %}
+    <a class="btn btn-outline-primary rounded-3" href="{% url 'staff_workbench' %}">进入工作台</a>
+  {% else %}
+    <div class="d-flex flex-column gap-2">
+      <a class="btn btn-outline-primary rounded-3" href="{% url 'visitor_account' %}">我的游园账户</a>
+      <form class="m-0" method="post" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-secondary rounded-3 w-100">退出登录</button>
+      </form>
+    </div>
+  {% endif %}
+{% endif %}

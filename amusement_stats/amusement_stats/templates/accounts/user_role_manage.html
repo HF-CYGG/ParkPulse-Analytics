@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}用户与角色管理 - ParkPulse Analytics{% endblock %}
+{% block page_title %}用户与角色管理{% endblock %}
+
+{% block content %}
+  <div class="user-role-page">
+    <p class="text-muted small mb-4">
+      角色由 Django <code>Group</code> 维护，仅区分 <strong>admin</strong> 与 <strong>staff</strong>；超级管理员账号受系统保护。
+    </p>
+
+    <div class="card shadow-sm border-0 user-role-section mb-4">
+      <div class="card-header bg-transparent border-bottom-0 pb-0 pt-3 px-4">
+        <span class="fw-semibold">筛选用户</span>
+      </div>
+      <div class="card-body pt-2 px-4 pb-4">
+        <form method="get" class="row g-3 align-items-end">
+          <div class="col-md-5 col-lg-4">
+            <label class="form-label small text-muted mb-1">用户名关键词</label>
+            <input class="form-control" name="keyword" value="{{ keyword }}" placeholder="例如 admin" autocomplete="off" />
+          </div>
+          <div class="col-auto d-flex gap-2">
+            <button class="btn btn-primary px-4" type="submit">筛选</button>
+            <a class="btn btn-outline-secondary" href="{% url 'user_role_manage' %}">重置</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 user-role-section mb-4">
+      <div class="card-header bg-transparent border-bottom-0 pb-0 pt-3 px-4 d-flex justify-content-between align-items-center">
+        <span class="fw-semibold">新建账号</span>
+        <span class="badge rounded-pill text-bg-light text-muted border">一次性设置用户名与初始密码</span>
+      </div>
+      <div class="card-body px-4 pb-4">
+        <form method="post" class="row g-3 align-items-end">
+          {% csrf_token %}
+          <input type="hidden" name="op" value="create_user" />
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">用户名</label>
+            <input class="form-control" name="username" placeholder="登录名" required autocomplete="off" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">初始密码</label>
+            <input class="form-control" type="password" name="password" placeholder="初始密码" required autocomplete="new-password" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label small text-muted mb-1">角色</label>
+            <select name="role" class="form-select" required>
+              <option value="none">普通用户</option>
+              <option value="staff">工作人员（staff）</option>
+              <option value="admin">管理员（admin）</option>
+            </select>
+          </div>
+          <div class="col-md-3 d-grid">
+            <label class="form-label small text-muted mb-1 d-none d-md-block">&nbsp;</label>
+            <button type="submit" class="btn btn-primary">创建用户</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap justify-content-between align-items-baseline gap-2 mb-3 px-1">
+      <h3 class="h6 text-secondary mb-0">用户列表</h3>
+      {% if page_obj %}
+        <span class="small text-muted">共 {{ page_obj.paginator.count }} 个账号 · 第 {{ page_obj.number }}/{{ page_obj.paginator.num_pages }} 页</span>
+      {% endif %}
+    </div>
+
+    {% for row in user_rows %}
+      <div class="card user-role-user-card shadow-sm border-0 mb-3">
+        <div class="card-body p-4">
+          {% if row.user.is_superuser %}
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="fs-5 fw-semibold">{{ row.user.username }}</span>
+                <span class="badge rounded-pill text-bg-dark">超级管理员</span>
+              </div>
+              <p class="text-muted small mb-0">系统内置账号，不支持在此修改角色、重置密码或删除。</p>
+            </div>
+          {% else %}
+            <div class="row g-4 align-items-stretch">
+              <div class="col-lg-3">
+                <div class="user-role-field-label">账号</div>
+                <div class="fs-6 fw-semibold">{{ row.user.username }}</div>
+                <div class="mt-2">
+                  <span class="badge rounded-pill text-bg-secondary">{{ row.role_label }}</span>
+                </div>
+              </div>
+
+              <div class="col-lg-3">
+                <div class="user-role-field-label">调整角色</div>
+                <form method="post" class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
+                  {% csrf_token %}
+                  <input type="hidden" name="op" value="assign_role" />
+                  <input type="hidden" name="user_id" value="{{ row.user.id }}" />
+                  <select name="role" class="form-select form-select-sm flex-grow-1" style="min-width: 0">
+                    <option value="none" {% if row.role == "none" %}selected{% endif %}>普通用户</option>
+                    <option value="staff" {% if row.role == "staff" %}selected{% endif %}>工作人员（staff）</option>
+                    <option value="admin" {% if row.role == "admin" %}selected{% endif %}>管理员（admin）</option>
+                  </select>
+                  <button type="submit" class="btn btn-sm btn-primary px-3 text-nowrap">保存</button>
+                </form>
+              </div>
+
+              <div class="col-lg-4">
+                <div class="user-role-field-label">重置密码</div>
+                <form method="post">
+                  {% csrf_token %}
+                  <input type="hidden" name="op" value="reset_password" />
+                  <input type="hidden" name="user_id" value="{{ row.user.id }}" />
+                  <div class="input-group input-group-sm">
+                    <input class="form-control" type="password" name="new_password" placeholder="输入新密码" required autocomplete="new-password" />
+                    <button type="submit" class="btn btn-outline-secondary">重置</button>
+                  </div>
+                </form>
+              </div>
+
+              <div class="col-lg-2 d-flex flex-column justify-content-end">
+                {% if row.user.id == user.id %}
+                  <div class="user-role-field-label">删除</div>
+                  <span class="text-muted small">当前账号</span>
+                {% else %}
+                  <div class="user-role-field-label">删除</div>
+                  <form method="post" class="m-0" onsubmit="return confirm('确定删除用户「{{ row.user.username }}」？不可恢复。');">
+                    {% csrf_token %}
+                    <input type="hidden" name="op" value="delete_user" />
+                    <input type="hidden" name="user_id" value="{{ row.user.id }}" />
+                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">删除</button>
+                  </form>
+                {% endif %}
+              </div>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    {% empty %}
+      <div class="card border-0 shadow-sm user-role-user-card">
+        <div class="card-body text-center text-muted py-5">暂无用户数据。</div>
+      </div>
+    {% endfor %}
+
+    {% if page_obj.paginator.num_pages > 1 %}
+      <nav class="mt-4 d-flex justify-content-center">
+        <ul class="pagination pagination-sm mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item">
+              <a class="page-link" href="?keyword={{ keyword|urlencode }}&page={{ page_obj.previous_page_number }}">上一页</a>
+            </li>
+          {% endif %}
+          <li class="page-item disabled">
+            <span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+          </li>
+          {% if page_obj.has_next %}
+            <li class="page-item">
+              <a class="page-link" href="?keyword={{ keyword|urlencode }}&page={{ page_obj.next_page_number }}">下一页</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
+  </div>
+{% endblock %}

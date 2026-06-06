@@ -1,0 +1,100 @@
+﻿{% extends "visitor/base.html" %}
+{% block title %}意见反馈{% endblock %}
+{% block extra_head %}
+  <meta http-equiv="refresh" content="20" />
+{% endblock %}
+
+{% block content %}
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'visitor_index' %}">首页</a></li>
+      <li class="breadcrumb-item"><a href="{% url 'visitor_account' %}">我的</a></li>
+      <li class="breadcrumb-item active" aria-current="page">反馈会话</li>
+    </ol>
+  </nav>
+
+  <div class="visitor-feedback-head mb-4">
+    <h1 class="h4 fw-bold mb-1">意见反馈</h1>
+    <p class="text-muted mb-0">你提交后，管理员会在会话中回复。页面每 20 秒自动刷新。</p>
+  </div>
+
+  <div class="row g-4 visitor-feedback-page">
+    <div class="col-lg-4">
+      <div class="visitor-card p-4 h-100">
+        <h2 class="h6 text-muted text-uppercase mb-3">新建反馈</h2>
+        <form method="post" action="">
+          {% csrf_token %}
+          <input type="hidden" name="op" value="new_feedback" />
+          <div class="mb-3">
+            <label class="form-label small">{{ feedback_form.title.label }}</label>
+            {{ feedback_form.title }}
+            {% if feedback_form.title.errors %}<div class="text-danger small mt-1">{{ feedback_form.title.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small">{{ feedback_form.content.label }}</label>
+            {{ feedback_form.content }}
+            {% if feedback_form.content.errors %}<div class="text-danger small mt-1">{{ feedback_form.content.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="mb-4">
+            <label class="form-label small">{{ feedback_form.contact.label }}</label>
+            {{ feedback_form.contact }}
+          </div>
+          <button type="submit" class="btn btn-primary w-100">提交反馈</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-8">
+      <h2 class="h6 text-muted text-uppercase mb-3">我的会话</h2>
+      {% if feedbacks %}
+        <div class="vstack gap-3">
+          {% for fb in feedbacks %}
+            <div class="visitor-card p-3 feedback-session-card">
+              <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+                <div>
+                  <div class="small text-muted">{{ fb.created_at|date:"Y-m-d H:i" }}</div>
+                  <div class="fw-semibold">{{ fb.title|default:"（无标题）" }}</div>
+                </div>
+                <div class="d-flex gap-1 align-items-center">
+                  {% if fb.unread_admin_count > 0 %}
+                    <span class="badge text-bg-danger">新回复 {{ fb.unread_admin_count }}</span>
+                  {% endif %}
+                  {% if fb.status == 'resolved' %}
+                    <span class="badge text-bg-success">已处理</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">待处理</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="text-body mb-2">{{ fb.content|linebreaksbr }}</div>
+              {% if fb.contact %}<div class="text-muted small mb-2">联系方式：{{ fb.contact }}</div>{% endif %}
+
+              <div class="feedback-chat-list">
+                {% for msg in fb.messages.all %}
+                  <div class="feedback-chat-item {% if msg.sender == 'admin' %}feedback-chat-admin{% else %}feedback-chat-self{% endif %}">
+                    <div class="feedback-chat-meta">{% if msg.sender == 'admin' %}管理员{% else %}我{% endif %} · {{ msg.created_at|date:"m-d H:i" }}</div>
+                    <div class="feedback-chat-content">{{ msg.content|linebreaksbr }}</div>
+                  </div>
+                {% empty %}
+                  <div class="text-muted small">暂无会话消息。</div>
+                {% endfor %}
+              </div>
+
+              <form class="mt-3" method="post">
+                {% csrf_token %}
+                <input type="hidden" name="op" value="reply" />
+                <input type="hidden" name="feedback_id" value="{{ fb.id }}" />
+                <label class="form-label small mb-1">继续回复</label>
+                {{ reply_form.content }}
+                <button class="btn btn-sm btn-outline-primary mt-2" type="submit">发送消息</button>
+              </form>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="visitor-card p-4 text-muted text-center">暂无提交记录。</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

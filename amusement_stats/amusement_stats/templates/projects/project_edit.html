@@ -1,0 +1,228 @@
+{# 项目编辑页：维护项目基础信息、封面图与地理坐标，并提供地图选点能力。 #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}编辑项目 - ParkPulse Analytics{% endblock %}
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">编辑项目：{{ project.name }}</h2>
+    <a class="btn btn-outline-secondary" href="/projects/">返回列表</a>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-4">
+          <label class="form-label" for="id_name">{{ form.name.label }}</label>
+          {{ form.name }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_project_type">{{ form.project_type.label }}</label>
+          {{ form.project_type }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="id_status">{{ form.status.label }}</label>
+          {{ form.status }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="id_capacity">{{ form.capacity.label }}</label>
+          {{ form.capacity }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="id_daily_warn_threshold">{{ form.daily_warn_threshold.label }}</label>
+          {{ form.daily_warn_threshold }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="id_queue_count">{{ form.queue_count.label }}</label>
+          {{ form.queue_count }}
+        </div>
+        <div class="col-md-2">
+          <label class="form-label" for="id_cycle_minutes">{{ form.cycle_minutes.label }}</label>
+          {{ form.cycle_minutes }}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_region">{{ form.region.label }}</label>
+          {{ form.region }}
+        </div>
+        <div class="col-md-5">
+          <label class="form-label" for="id_operating_hours_text">{{ form.operating_hours_text.label }}</label>
+          {{ form.operating_hours_text }}
+        </div>
+        <div class="col-12">
+          <label class="form-label" for="id_short_description">{{ form.short_description.label }}</label>
+          {{ form.short_description }}
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="id_cover_image">{{ form.cover_image.label }}</label>
+          {{ form.cover_image }}
+          {% if project.cover_image %}
+            <div class="mt-2">
+              <img src="{{ project.cover_image.url }}" alt="当前封面" class="img-thumbnail project-cover-preview">
+            </div>
+          {% endif %}
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_latitude">{{ form.latitude.label }}</label>
+          {{ form.latitude }}
+          <div class="form-text">可先填数字，或下方在地图上点选。</div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label" for="id_longitude">{{ form.longitude.label }}</label>
+          {{ form.longitude }}
+        </div>
+        <div class="col-12">
+          <div class="border rounded-3 p-3 bg-light bg-opacity-50">
+            <div class="fw-semibold mb-1">地图选点（推荐）</div>
+            <p class="small text-muted mb-2 mb-md-3">
+              拖动红色标记或点击地图即可写入上方经纬度；坐标为 WGS84。若当前网络无法访问在线底图，仍可在离线底板上选点。
+            </p>
+            <div
+              id="project-edit-map"
+              class="rounded border shadow-sm project-edit-map"
+              data-init-lat="{{ map_init_lat }}"
+              data-init-lng="{{ map_init_lng }}"
+              data-default-lat="{{ map_default_lat }}"
+              data-default-lng="{{ map_default_lng }}"
+            ></div>
+            <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
+              <button type="button" class="btn btn-sm btn-outline-secondary" id="project-map-use-region">
+                使用当前「所属区域」参考位置
+              </button>
+              <span class="small text-muted">未选区域时用园区默认中心。</span>
+            </div>
+            <script type="application/json" id="project-region-centers-json">{{ region_centers_json|safe }}</script>
+          </div>
+        </div>
+        <div class="col-12 d-flex justify-content-end">
+          <button type="submit" class="btn btn-primary px-4">保存</button>
+        </div>
+      </form>
+      {% if form.errors %}
+        <div class="alert alert-danger mt-3 mb-0">{{ form.errors }}</div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+  <script>
+    (function () {
+      var el = document.getElementById("project-edit-map");
+      var debugEnabled =
+        Boolean(globalThis.location) &&
+        new URLSearchParams(globalThis.location.search).get("debug") === "1";
+      function logMapDebug(lines, isError) {
+        if (!debugEnabled && !isError) return;
+        var method = isError ? "error" : "info";
+        if (globalThis.console && typeof globalThis.console.groupCollapsed === "function") {
+          globalThis.console.groupCollapsed("[地图调试] 项目编辑");
+          lines.forEach(function (line) {
+            globalThis.console[method](line);
+          });
+          globalThis.console.groupEnd();
+          return;
+        }
+        lines.forEach(function (line) {
+          globalThis.console[method]("[地图调试] 项目编辑 - " + line);
+        });
+      }
+
+      if (!el) return;
+      if (typeof L === "undefined") {
+        logMapDebug(["状态: 初始化失败", "错误: Leaflet 前端库未成功加载。"], true);
+        return;
+      }
+      var latInput = document.getElementById("id_latitude");
+      var lngInput = document.getElementById("id_longitude");
+      var regionSelect = document.getElementById("id_region");
+      var jsonNode = document.getElementById("project-region-centers-json");
+      if (!latInput || !lngInput || !jsonNode) {
+        logMapDebug(["状态: 初始化失败", "错误: 未找到经纬度输入框或区域中心数据。"], true);
+        return;
+      }
+      var regionCenters = JSON.parse(jsonNode.textContent || "{}");
+
+      function parseNum(v) {
+        var n = Number.parseFloat(String(v).replace(",", "."));
+        return Number.isFinite(n) ? n : Number.NaN;
+      }
+
+      function parsePoint(latValue, lngValue) {
+        var lat = parseNum(latValue);
+        var lng = parseNum(lngValue);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+        return [lat, lng];
+      }
+
+      function setInputs(lat, lng) {
+        if (!latInput || !lngInput) return;
+        latInput.value = lat.toFixed(6);
+        lngInput.value = lng.toFixed(6);
+      }
+
+      var initialPoint = parsePoint(el.dataset.initLat, el.dataset.initLng) || parsePoint(el.dataset.defaultLat, el.dataset.defaultLng) || [31.235, 121.495];
+      var ilat = initialPoint[0];
+      var ilng = initialPoint[1];
+
+      try {
+        var map = L.map("project-edit-map", { scrollWheelZoom: true }).setView([ilat, ilng], 16);
+        setTimeout(function () {
+          map.invalidateSize();
+        }, 200);
+
+        var marker = L.marker([ilat, ilng], { draggable: true }).addTo(map);
+        marker.on("dragend", function (e) {
+          var p = e.target.getLatLng();
+          setInputs(p.lat, p.lng);
+        });
+        map.on("click", function (e) {
+          marker.setLatLng(e.latlng);
+          setInputs(e.latlng.lat, e.latlng.lng);
+        });
+
+        var currentPoint = parsePoint(latInput.value, lngInput.value);
+        if (currentPoint) {
+          marker.setLatLng(currentPoint);
+          map.setView(currentPoint, 16);
+        }
+
+        function onLatLngBlur() {
+          var point = parsePoint(latInput.value, lngInput.value);
+          if (point) {
+            marker.setLatLng(point);
+            map.panTo(point);
+          }
+        }
+        latInput.addEventListener("change", onLatLngBlur);
+        lngInput.addEventListener("change", onLatLngBlur);
+
+        var btn = document.getElementById("project-map-use-region");
+        if (btn) {
+          btn.addEventListener("click", function () {
+            var key = regionSelect ? regionSelect.value : "";
+            var c = key && regionCenters[key] ? regionCenters[key] : null;
+            if (!c) {
+              c = { lat: parseNum(el.dataset.defaultLat), lng: parseNum(el.dataset.defaultLng) };
+            }
+            var point = parsePoint(c.lat, c.lng);
+            if (!point) return;
+            marker.setLatLng(point);
+            map.setView(point, 16);
+            setInputs(point[0], point[1]);
+          });
+        }
+
+        logMapDebug(["状态: 已初始化", "模式: 离线底板", "默认中心: " + [ilat, ilng].join(", ")], false);
+      } catch (error) {
+        logMapDebug(["状态: 初始化失败", "模式: 离线底板", "错误: " + (error && error.message ? error.message : String(error))], true);
+      }
+    })();
+  </script>
+{% endblock %}

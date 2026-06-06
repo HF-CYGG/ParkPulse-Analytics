@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}系统管理 - ParkPulse Analytics{% endblock %}
+{% block page_title %}系统管理{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="history.back()">返回上一页</button>
+  </div>
+
+  <div class="row g-3 system-manage-grid">
+    <div class="col-12 col-xl-8">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <h2 class="h4 mb-3">站点管理</h2>
+          {% if available_apps %}
+            <div class="system-admin-apps">
+              {% for app in available_apps %}
+                <div class="system-admin-app card border-0 shadow-sm mb-3">
+                  <div class="system-admin-app-head">
+                    <div class="fw-semibold">{{ app.name }}</div>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <tbody>
+                        {% for model in app.models %}
+                          <tr>
+                            <td class="w-50">
+                              {% if model.admin_url %}
+                                <a class="text-decoration-none" href="{{ model.admin_url }}">{{ model.name }}</a>
+                              {% else %}
+                                {{ model.name }}
+                              {% endif %}
+                            </td>
+                            <td class="text-end text-nowrap">
+                              {% if model.add_url %}
+                                <a class="btn btn-sm btn-outline-success" href="{{ model.add_url }}">增加</a>
+                              {% endif %}
+                              {% if model.admin_url %}
+                                <a class="btn btn-sm btn-outline-primary ms-1" href="{{ model.admin_url }}">修改</a>
+                              {% endif %}
+                            </td>
+                          </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="alert alert-light border mb-0">当前账号没有可用的系统管理模型权限。</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-header bg-white fw-semibold">最近动作</div>
+        <div class="card-body p-0">
+          {% if recent_actions %}
+            <div class="list-group list-group-flush">
+              {% for entry in recent_actions %}
+                <div class="list-group-item">
+                  <div class="small fw-semibold">{{ entry.user.username }} · {{ entry.action_time|date:"m-d H:i" }}</div>
+                  <div class="small text-muted">{{ entry.content_type }}：{{ entry.object_repr }}</div>
+                  {% if entry.get_admin_url %}
+                    <a class="small" href="{{ entry.get_admin_url }}">查看对象</a>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="p-3 text-muted small">暂无动作记录</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-white fw-semibold">我的动作</div>
+        <div class="card-body p-0">
+          {% if my_actions %}
+            <div class="list-group list-group-flush">
+              {% for entry in my_actions %}
+                <div class="list-group-item">
+                  <div class="small fw-semibold">{{ entry.action_time|date:"m-d H:i" }}</div>
+                  <div class="small text-muted">{{ entry.content_type }}：{{ entry.object_repr }}</div>
+                  {% if entry.get_admin_url %}
+                    <a class="small" href="{{ entry.get_admin_url }}">查看对象</a>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="p-3 text-muted small">无可选动作</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

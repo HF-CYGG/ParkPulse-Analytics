@@ -1,0 +1,103 @@
+﻿{% extends "visitor/base.html" %}
+{% load static %}
+{% block title %}游乐项目{% endblock %}
+
+{% block content %}
+  {% include "visitor/_weather_alert.html" %}
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+      <h1 class="h3 fw-bold mb-1">游乐项目</h1>
+      <p class="text-muted small mb-0">可按类型、区域与运行状态筛选，点击卡片查看详情。</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <form class="row g-2 align-items-end" method="get">
+        <div class="col-md-3">
+          <label class="form-label small text-muted mb-0">关键字</label>
+          <input class="form-control form-control-sm" name="q" value="{{ keyword }}" placeholder="项目名称" />
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-0">类型</label>
+          <select class="form-select form-select-sm" name="type">
+            <option value="">全部</option>
+            {% for val, label in type_choices %}
+              <option value="{{ val }}" {% if filter_type == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-0">区域</label>
+          <select class="form-select form-select-sm" name="region">
+            <option value="">全部</option>
+            {% for val, label in region_choices %}
+              <option value="{{ val }}" {% if filter_region == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small text-muted mb-0">状态</label>
+          <select class="form-select form-select-sm" name="status">
+            <option value="">全部</option>
+            {% for val, label in status_choices %}
+              <option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2 d-grid">
+          <button type="submit" class="btn btn-primary btn-sm">筛选</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    {% for p in projects %}
+      <div class="col-md-6 col-xl-4">
+        <a class="text-decoration-none text-reset visitor-card-link" href="{% url 'visitor_project_detail' p.id %}">
+          <div class="visitor-card p-0 h-100 overflow-hidden">
+            <div class="ratio ratio-16x9 bg-light">
+              {% if p.cover_image %}
+                <img src="{{ p.cover_image.url }}" alt="" class="object-fit-cover w-100 h-100" />
+              {% else %}
+                <img src="{% static 'img/project-placeholder.svg' %}" alt="" class="object-fit-cover w-100 h-100 opacity-75" />
+              {% endif %}
+            </div>
+            <div class="p-3">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <h2 class="h6 fw-bold mb-0">{{ p.name }}</h2>
+                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                  {% if user.is_authenticated and p.id in favorite_project_ids %}
+                    <span class="small text-danger" title="已收藏">❤</span>
+                  {% endif %}
+                  <span class="badge {% if p.status == 'normal' %}text-bg-success{% elif p.status == 'maintenance' %}text-bg-warning{% else %}text-bg-secondary{% endif %}">
+                    {{ p.get_status_display }}
+                  </span>
+                </div>
+              </div>
+              <div class="small text-muted mb-2">
+                {{ p.get_project_type_display }} ·
+                {% with er=p.effective_region %}
+                  {% for val, label in region_choices %}
+                    {% if val == er %}{{ label }}{% endif %}
+                  {% endfor %}
+                {% endwith %}
+              </div>
+              <div class="small text-muted">当前排队人数：{{ p.queue_count }} 人</div>
+              <div class="small text-muted">单轮游玩时长：{{ p.cycle_minutes }} 分钟</div>
+              <div class="small text-muted">运营时间：{{ p.operating_hours_text|default:"以现场公告为准" }}</div>
+              {% if p.short_description %}
+                <p class="small text-body-secondary mt-2 mb-0 text-truncate-3" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">{{ p.short_description }}</p>
+              {% endif %}
+            </div>
+          </div>
+        </a>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="visitor-card p-5 text-center text-muted">没有符合条件的项目。</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

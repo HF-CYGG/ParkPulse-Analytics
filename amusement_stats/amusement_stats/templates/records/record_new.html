@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}游玩数据录入 - ParkPulse Analytics{% endblock %}
+{% block page_title %}游玩记录管理{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-0">游玩数据录入</h2>
+      <div class="small text-muted mt-1">
+        {% if is_admin %}
+          单条录入 + 批量导入（管理员）
+        {% else %}
+          单条录入（工作人员仅可维护本人记录）
+        {% endif %}
+      </div>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+      {% if is_admin %}
+        <a class="btn btn-sm btn-outline-primary" href="/records/import/">批量导入 CSV/XLSX</a>
+      {% endif %}
+      <span class="badge text-bg-primary">工作人员入口</span>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-8">
+      {% if record_block_alert %}
+        <div class="alert alert-danger shadow-sm">
+          <div class="fw-bold mb-1">阈值告警：本次记录已拦截</div>
+          {% for msg in record_block_alert.messages %}
+            <div>{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <form class="row g-3" method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="col-12">
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+              </div>
+            {% endif %}
+            <div class="col-md-6">
+              <label class="form-label">{{ form.project.label }}</label>
+              {{ form.project }}
+              {% if form.project.errors %}<div class="text-danger small mt-1">{{ form.project.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.play_time.label }}</label>
+              {{ form.play_time }}
+              {% if form.play_time.errors %}<div class="text-danger small mt-1">{{ form.play_time.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.queue_time.label }}</label>
+              {{ form.queue_time }}
+              {% if form.queue_time.errors %}<div class="text-danger small mt-1">{{ form.queue_time.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.repeat_count.label }}</label>
+              {{ form.repeat_count }}
+              {% if form.repeat_count.errors %}<div class="text-danger small mt-1">{{ form.repeat_count.errors }}</div>{% endif %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.status_snapshot.label }}</label>
+              {{ form.status_snapshot }}
+              {% if form.status_snapshot.errors %}<div class="text-danger small mt-1">{{ form.status_snapshot.errors }}</div>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.note.label }}</label>
+              {{ form.note }}
+            </div>
+            <div class="col-12 d-flex gap-2">
+              <button type="submit" class="btn btn-primary">提交记录</button>
+              <button type="reset" class="btn btn-outline-secondary">清空</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body">
+          <h5>录入规范</h5>
+          <ul class="small text-muted mb-0">
+            <li>并发占用口径：`record.play_time <= 当前录入时间 < record.play_time + 项目单轮时长`（左闭右开）。</li>
+            <li>达到/超过项目最大承载量后，不允许继续录入。</li>
+            <li>日预警口径：按自然日统计同项目记录数，达到阈值后不允许继续录入。</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5>当日录入概览</h5>
+          <div class="small text-muted">已录入 {{ today_count }} 条</div>
+          <hr />
+          <h6>历史记录</h6>
+          <form method="get" class="mb-2">
+            <div class="row g-2">
+              <div class="col-12">
+                <input type="date" class="form-control form-control-sm" name="filter_date" value="{{ filter_date }}" />
+              </div>
+              <div class="col-6">
+                <select class="form-select form-select-sm" name="filter_project">
+                  <option value="">全部项目</option>
+                  {% for p in projects %}
+                    <option value="{{ p.id }}" {% if filter_project == p.id|stringformat:"s" %}selected{% endif %}>{{ p.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-6">
+                <select class="form-select form-select-sm" name="filter_status">
+                  <option value="">全部状态</option>
+                  {% for val, label in status_choices %}
+                    <option value="{{ val }}" {% if filter_status == val %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-12 d-grid">
+                <button class="btn btn-outline-secondary btn-sm" type="submit">筛选</button>
+              </div>
+            </div>
+          </form>
+          <div class="small">
+            {% for item in page_obj %}
+              <div class="mb-2 border-bottom pb-2">
+                <div>{{ item.play_time|date:"m-d H:i" }} · {{ item.project.name }} · 排队 {{ item.queue_time }} 分钟</div>
+                <div class="small text-muted mt-1">
+                  录入者：{% if item.created_by %}{{ item.created_by.username }}{% else %}—{% endif %}
+                </div>
+                <div class="mt-1">
+                  <a href="/records/{{ item.id }}/edit/" class="btn btn-sm btn-outline-primary">编辑</a>
+                  <a href="/records/{{ item.id }}/delete/" class="btn btn-sm btn-outline-danger">删除</a>
+                </div>
+              </div>
+            {% empty %}
+              <div class="text-muted">暂无数据。</div>
+            {% endfor %}
+          </div>
+          {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="mt-2">
+              <ul class="pagination pagination-sm mb-0">
+                {% if page_obj.has_previous %}
+                  <li class="page-item"><a class="page-link" href="?filter_date={{ filter_date }}&filter_project={{ filter_project }}&filter_status={{ filter_status }}&page={{ page_obj.previous_page_number }}">上一页</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                  <li class="page-item"><a class="page-link" href="?filter_date={{ filter_date }}&filter_project={{ filter_project }}&filter_status={{ filter_status }}&page={{ page_obj.next_page_number }}">下一页</a></li>
+                {% endif %}
+              </ul>
+            </nav>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

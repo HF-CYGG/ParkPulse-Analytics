@@ -1,0 +1,68 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}游客服务{% endblock %} - ParkPulse Analytics</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/visitor.css' %}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="visitor-body">
+    <nav class="visitor-nav navbar navbar-expand-lg navbar-light sticky-top">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'visitor_index' %}">欢乐游园指南</a>
+        <button class="navbar-toggler border rounded-2" type="button" data-bs-toggle="collapse" data-bs-target="#visitorNav" aria-controls="visitorNav" aria-expanded="false" aria-label="展开导航">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="visitorNav">
+          <ul class="navbar-nav ms-auto mb-2 mb-lg-0 gap-lg-2">
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'visitor_index' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_index' %}">首页</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'visitor_project_list' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_project_list' %}">游乐项目</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'visitor_analytics' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_analytics' %}">数据洞察</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'visitor_map' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_map' %}">园区地图</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'visitor_itinerary' or request.resolver_match.url_name == 'visitor_itinerary_detail' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_itinerary' %}">行程规划</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {% if request.resolver_match.url_name == 'visitor_recommendations' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_recommendations' %}">智能推荐</a>
+            </li>
+            {% if user.is_authenticated %}
+              <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'visitor_account' or request.resolver_match.url_name == 'visitor_favorites' or request.resolver_match.url_name == 'visitor_feedback' %}fw-semibold text-primary{% endif %}" href="{% url 'visitor_account' %}">我的</a>
+              </li>
+            {% endif %}
+            {% include "visitor/_account_actions.html" with mode="nav" %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-4 flex-grow-1">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-info shadow-sm">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="visitor-footer">
+      <div class="container text-center small">
+        <div class="mb-1">数据为园内统计聚合结果，热度档位仅供参考，请以现场公示为准。</div>
+        <div class="text-muted">运营数据管理请使用工作人员入口。</div>
+      </div>
+    </footer>
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

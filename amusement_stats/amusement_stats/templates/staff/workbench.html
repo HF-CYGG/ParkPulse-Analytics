@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block title %}工作人员工作台 - ParkPulse Analytics{% endblock %}
+{% block page_title %}工作人员工作台{% endblock %}
+
+{% block content %}
+  {% if queue_alert_rows %}
+    <div class="alert alert-danger shadow-sm">
+      <div class="fw-bold mb-1">容量/阈值告警（{{ queue_alert_rows|length }} 项）</div>
+      {% for a in queue_alert_rows %}
+        <div>【{{ a.name }}】{{ a.reasons|join:"；" }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="d-flex justify-content-between align-items-start flex-wrap gap-3 mb-3">
+    <div>
+      <h2 class="mb-1">工作台</h2>
+      <div class="small text-muted">
+        统计范围：<span class="fw-semibold">{{ scope_label }}</span>（按当日 `play_time` 聚合）
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <a class="btn btn-primary" href="/records/new/">单条录入</a>
+      <a class="btn btn-outline-primary" href="/">全员聚合看板</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <div class="small text-muted">今日游玩记录条数</div>
+          <div class="display-6 fw-bold">{{ today_visits }}</div>
+          <div class="small text-muted mt-2">日期：{{ today|date:"Y-m-d" }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <div class="small text-muted">今日重复游玩次数合计</div>
+          <div class="display-6 fw-bold">{{ today_repeats }}</div>
+          <div class="small text-muted mt-2">来源：`repeat_count` 字段汇总</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <div class="small text-muted">今日排队时长合计（分钟）</div>
+          <div class="display-6 fw-bold">{{ today_queue_sum }}</div>
+          <div class="small text-muted mt-2">口径：`SUM(queue_time)`，非估算值</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h5 class="mb-0">项目实时排队概览</h5>
+        <div class="small text-muted">每 20 秒自动刷新一次</div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>项目名称</th>
+              <th>当前排队人数</th>
+              <th>单轮游玩时长</th>
+              <th>运行状态</th>
+              <th>最近更新时间</th>
+            </tr>
+          </thead>
+          <tbody id="staffQueueBody">
+            {% for row in project_queue_rows %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td>{{ row.queue_count }} 人</td>
+                <td>{{ row.cycle_minutes }} 分钟</td>
+                <td>{{ row.status_display }}</td>
+                <td>{{ row.updated_at|date:"Y-m-d H:i:s" }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-3">暂无项目数据</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">近 7 日热门项目（Top 5）</div>
+            <div class="small text-muted">{{ week_start|date:"m-d" }} ~ {{ today|date:"m-d" }}</div>
+          </div>
+          {% if top_projects_week %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>项目</th>
+                    <th class="text-end">记录条数</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in top_projects_week %}
+                    <tr>
+                      <td>{{ row.project__name|default:"（未知项目）" }}</td>
+                      <td class="text-end">{{ row.visits }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted small">暂无数据，可先去“单条录入”补充今日记录。</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm border-0 h-100">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="fw-semibold">我最近录入（最多 10 条）</div>
+            <a class="small" href="/records/new/">去记录页</a>
+          </div>
+          {% if recent_records %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>项目</th>
+                    <th>游玩时间</th>
+                    <th class="text-end">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for r in recent_records %}
+                    <tr>
+                      <td>{{ r.project.name }}</td>
+                      <td class="text-nowrap">{{ r.play_time|date:"Y-m-d H:i" }}</td>
+                      <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary" href="{% url 'record_edit' r.id %}">编辑</a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted small">你还没有录入记录。</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  {{ block.super }}
+  <script>
+    (function () {
+      const tbody = document.getElementById("staffQueueBody");
+      if (!tbody) return;
+
+      function badgeStatusLabel(statusDisplay) {
+        return statusDisplay || "-";
+      }
+
+      function renderRows(rows) {
+        if (!rows || rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">暂无项目数据</td></tr>';
+          return;
+        }
+        tbody.innerHTML = "";
+        rows.forEach((row) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          `;
+          tr.children[0].textContent = row.name || "-";
+          tr.children[1].textContent = `${row.queue_count ?? 0} 人`;
+          tr.children[2].textContent = `${row.cycle_minutes ?? 0} 分钟`;
+          tr.children[3].textContent = badgeStatusLabel(row.status_display);
+          tr.children[4].textContent = row.updated_at || "-";
+          tbody.appendChild(tr);
+        });
+      }
+
+      async function fetchQueues() {
+        try {
+          const resp = await fetch("{% url 'staff_project_queues_api' %}", {
+            method: "GET",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+          });
+          if (!resp.ok) return;
+          const payload = await resp.json();
+          if (payload && payload.code === 0 && payload.data) {
+            renderRows(payload.data.rows || []);
+          }
+        } catch (e) {
+          // 忽略瞬时网络错误，下一轮轮询会自动恢复
+        }
+      }
+
+      setInterval(fetchQueues, 20000);
+    })();
+  </script>
+{% endblock %}

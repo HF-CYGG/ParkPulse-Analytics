@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}界面与参数设置 - ParkPulse Analytics{% endblock %}
+{% block page_title %}界面与参数设置{% endblock %}
+
+{% block content %}
+  <div class="d-flex flex-wrap gap-2 mb-3">
+    <button class="btn btn-sm btn-outline-secondary" type="button" onclick="history.back()">返回上一页</button>
+  </div>
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <div class="alert alert-light border small">
+        <strong>系统管理作用</strong>：统一管理看板默认时间范围、分页和主题，并作为运营参数入口（项目阈值、行程模板、反馈处理）保障游客端与运营端数据一致。
+      </div>
+      <form method="post" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-4">
+          <label class="form-label">默认看板时间范围（天）</label>
+          <input class="form-control" type="number" min="1" max="30" name="default_days" value="{{ default_days }}" />
+          <div class="form-text">用于进入看板时未手动选择日期的默认周期。</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">记录分页大小</label>
+          <input class="form-control" type="number" min="5" max="100" name="page_size" value="{{ page_size }}" />
+          <div class="form-text">用于记录管理页面的每页条数。</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">默认主题</label>
+          <select class="form-select" name="ui_theme">
+            <option value="light" {% if ui_theme == "light" %}selected{% endif %}>浅色</option>
+            <option value="dark" {% if ui_theme == "dark" %}selected{% endif %}>深色</option>
+          </select>
+          <div class="form-text">与页面右上角主题切换联动。</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">园区营业时间（游客端首页展示）</label>
+          <input class="form-control" name="operating_hours_text" value="{{ operating_hours_text }}" placeholder="例如：10:00-21:00（节假日延长）" />
+          <div class="form-text">用于游客端首页运营时间卡片，支持文字说明。</div>
+        </div>
+        <div class="col-12">
+          <button class="btn btn-primary" type="submit">保存设置</button>
+          <a class="btn btn-outline-secondary ms-2" href="{% url 'itinerary_plan_manage' %}">管理行程规划模板</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

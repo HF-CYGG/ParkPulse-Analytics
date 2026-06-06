@@ -1,0 +1,171 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}ParkPulse Analytics{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    {% block extra_head %}{% endblock %}
+  </head>
+  <body class="app-body {% block body_class %}{% endblock %}" data-default-theme="{{ request.session.ui_theme|default:'light' }}">
+    {% if user.is_authenticated %}
+      <div class="admin-shell">
+        <aside class="admin-sidebar">
+          <div class="sidebar-brand">
+            <div class="fw-bold text-white">Operations Console</div>
+            <div class="small text-white-50">数据驱动管理</div>
+          </div>
+
+          <div class="sidebar-section-title">核心模块</div>
+          <nav class="sidebar-nav">
+            {% if is_staff_or_admin and not is_admin %}
+              <a class="sidebar-link {% if '/staff/' in request.path %}active{% endif %}" href="{% url 'staff_workbench' %}">
+                <span class="sidebar-icon">⚱</span><span>工作人员工作台</span>
+              </a>
+            {% endif %}
+
+            <a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="/">
+              <span class="sidebar-icon">▦</span><span>看板总览</span>
+            </a>
+            <a class="sidebar-link {% if '/records/' in request.path %}active{% endif %}" href="/records/new/">
+              <span class="sidebar-icon">✎</span><span>游玩记录管理</span>
+            </a>
+            {% if is_staff_or_admin %}
+              <a class="sidebar-link {% if '/projects/' in request.path %}active{% endif %}" href="/projects/">
+                <span class="sidebar-icon">◫</span><span>游乐项目管理</span>
+              </a>
+            {% endif %}
+          </nav>
+
+          <div class="sidebar-section-title mt-3">系统配置</div>
+          <nav class="sidebar-nav">
+            {% if is_admin %}
+              <a class="sidebar-link {% if request.path == '/settings/' %}active{% endif %}" href="/settings/">
+                <span class="sidebar-icon">⚙</span><span>系统管理</span>
+              </a>
+              <a class="sidebar-link {% if request.path == '/settings/ui/' %}active{% endif %}" href="/settings/ui/">
+                <span class="sidebar-icon">☼</span><span>界面与参数设置</span>
+              </a>
+              <a class="sidebar-link {% if '/accounts/users/' in request.path %}active{% endif %}" href="/accounts/users/">
+                <span class="sidebar-icon">@</span><span>用户与角色管理</span>
+              </a>
+              <a class="sidebar-link {% if '/visitor-feedback/' in request.path %}active{% endif %}" href="/visitor-feedback/">
+                <span class="sidebar-icon">✉</span><span>游园反馈管理</span>
+              </a>
+              <a class="sidebar-link {% if '/settings/itinerary/' in request.path %}active{% endif %}" href="/settings/itinerary/">
+                <span class="sidebar-icon">☷</span><span>行程规划管理</span>
+              </a>
+              <a class="sidebar-link {% if '/audit/' in request.path %}active{% endif %}" href="/audit/">
+                <span class="sidebar-icon">☷</span><span>操作审计日志</span>
+              </a>
+            {% endif %}
+          </nav>
+
+          <div class="sidebar-footer">
+            <form class="m-0" method="post" action="{% url 'logout' %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-outline-light w-100">退出登录</button>
+            </form>
+          </div>
+        </aside>
+
+        <div class="admin-main">
+          <header class="app-header border-bottom bg-white sticky-top">
+            <div class="container-fluid px-4 py-3 d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <button id="sidebarToggleBtn" class="btn btn-sm btn-outline-secondary" type="button">折叠菜单</button>
+                <div>
+                  <a class="navbar-brand fw-bold text-primary" href="/">ParkPulse Analytics</a>
+                  <div class="small text-muted">热门项目统计 · 客流分析 · 运维协同</div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-2 flex-wrap justify-content-end">
+                {% if is_admin %}
+                  <form class="d-flex" method="get" action="/projects/">
+                    <input class="form-control form-control-sm" name="keyword" placeholder="全局搜索项目名..." />
+                  </form>
+                {% endif %}
+                <button id="themeToggleBtn" class="btn btn-sm btn-outline-secondary" type="button">深色模式</button>
+                <div class="small text-muted">当前用户：{{ user.username }}</div>
+              </div>
+            </div>
+          </header>
+
+          <main class="container-fluid px-4 py-4">
+    {% else %}
+      <header class="app-header border-bottom bg-white sticky-top">
+        <div class="container-fluid px-4 py-3 d-flex align-items-center justify-content-between">
+          <div>
+            <a class="navbar-brand fw-bold text-primary" href="/">ParkPulse Analytics</a>
+            <div class="small text-muted">热门项目统计 · 客流分析 · 运维协同</div>
+          </div>
+          {% url "login" as login_url %}
+          {% if request.path != login_url %}
+            <a class="btn btn-primary btn-sm" href="{{ login_url }}">登录系统</a>
+          {% else %}
+            <span class="small text-muted">安全登录入口</span>
+          {% endif %}
+        </div>
+      </header>
+      <main class="container-fluid px-4 py-4">
+    {% endif %}
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-info shadow-sm">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% if user.is_authenticated %}
+      <div class="mb-3 d-flex justify-content-between align-items-center">
+        <div>
+          <h4 class="mb-1">{% block page_title %}系统首页{% endblock %}</h4>
+          <div class="small text-muted">
+            当前位置：
+            {% if request.path == '/' %}
+              看板总览
+            {% elif '/staff/' in request.path %}
+              工作人员工作台
+            {% elif '/records/' in request.path %}
+              游玩记录管理
+            {% elif '/projects/' in request.path %}
+              游乐项目管理
+            {% elif '/settings/itinerary/' in request.path %}
+              行程规划管理
+            {% elif request.path == '/settings/ui/' %}
+              界面与参数设置
+            {% elif request.path == '/settings/' %}
+              系统管理
+            {% elif '/accounts/users/' in request.path %}
+              用户与角色管理
+            {% elif '/visitor-feedback/' in request.path %}
+              游园反馈管理
+            {% elif '/audit/' in request.path %}
+              操作审计日志
+            {% elif '/admin/' in request.path %}
+              系统管理
+            {% else %}
+              系统页面
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+
+    </main>
+    {% if user.is_authenticated %}
+        </div>
+      </div>
+    {% endif %}
+
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'vendor/echarts/echarts.min.js' %}"></script>
+    <script src="{% static 'js/app.js' %}"></script>
+    {% block scripts %}{% endblock %}
+  </body>
+</html>

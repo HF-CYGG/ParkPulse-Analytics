@@ -1,0 +1,5 @@
+# Optional enterprise forecasting stack.
+# Install with: install_deps.bat --with-ml
+scikit-learn>=1.4,<2
+prophet>=1.1,<2
+torch>=2.2,<3

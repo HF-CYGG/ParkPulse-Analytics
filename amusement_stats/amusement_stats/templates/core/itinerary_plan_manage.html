@@ -1,0 +1,129 @@
+{# 管理员端行程模板管理页：提供模板新增、节点维护与启停管理，不再展示地图预览。 #}
+{% extends "base.html" %}
+
+{% block title %}行程规划管理 - ParkPulse Analytics{% endblock %}
+{% block page_title %}行程规划管理{% endblock %}
+
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="small text-muted">在此维护模板基础信息与节点顺序，便于管理员统一管理推荐路线。</div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'system_settings_ui' %}">返回界面与参数设置</a>
+      <a class="btn btn-sm btn-outline-secondary" href="/">返回看板</a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-3">
+    <div class="col-lg-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">新增规划模板</h5>
+          <form method="post" class="row g-2">
+            {% csrf_token %}
+            <input type="hidden" name="op" value="create_plan">
+            <div class="col-12">
+              <label class="form-label" for="createPlanName">方案名称</label>
+              <input class="form-control" id="createPlanName" type="text" name="name" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="createPlanAudience">适用人群</label>
+              <select class="form-select" id="createPlanAudience" name="audience">
+                {% for val, label in audience_choices %}
+                  <option value="{{ val }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="createPlanPreference">偏好标签</label>
+              <input class="form-control" id="createPlanPreference" type="text" name="preference_tag" placeholder="例如：亲子/刺激">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="createPlanDescription">说明</label>
+              <textarea class="form-control" id="createPlanDescription" rows="3" name="description"></textarea>
+            </div>
+            <div class="col-12 d-grid">
+              <button class="btn btn-primary" type="submit">创建模板</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-7">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="mb-3">新增行程节点</h5>
+          <form method="post" class="row g-2">
+            {% csrf_token %}
+            <input type="hidden" name="op" value="add_item">
+            <div class="col-md-4">
+              <label class="form-label" for="planItemPlanId">模板</label>
+              <select class="form-select" id="planItemPlanId" name="plan_id" {% if not plans %}disabled{% endif %}>
+                {% for p in plans %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% empty %}
+                  <option value="">请先创建模板</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="planItemProjectId">项目</label>
+              <select class="form-select" id="planItemProjectId" name="project_id" {% if not projects %}disabled{% endif %}>
+                {% for p in projects %}
+                  <option value="{{ p.id }}">{{ p.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label" for="planItemSeq">顺序</label>
+              <input class="form-control" id="planItemSeq" type="number" min="1" name="seq" value="1">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label" for="planItemTip">提示</label>
+              <input class="form-control" id="planItemTip" type="text" name="tip" placeholder="例如：先玩刺激项目，避开午后高峰">
+            </div>
+            <div class="col-12 d-grid">
+              <button class="btn btn-outline-primary" type="submit" {% if not plans %}disabled{% endif %}>保存节点</button>
+            </div>
+          </form>
+          {% if not plans %}
+            <div class="alert alert-warning mt-2 mb-0">暂无模板，无法新增节点，请先创建模板。</div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <h5 class="mb-3">模板列表</h5>
+      {% for p in plans %}
+        <div class="border rounded p-3 mb-3">
+          <div class="d-flex justify-content-between align-items-center gap-2">
+            <div>
+              <strong>{{ p.name }}</strong>
+              <span class="badge text-bg-secondary ms-2">{{ p.get_audience_display }}</span>
+              {% if p.preference_tag %}<span class="text-muted small ms-2">{{ p.preference_tag }}</span>{% endif %}
+              {% if p.is_active %}<span class="badge text-bg-success ms-2">已启用</span>{% else %}<span class="badge text-bg-secondary ms-2">已停用</span>{% endif %}
+            </div>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="op" value="toggle_plan">
+              <input type="hidden" name="plan_id" value="{{ p.id }}">
+              <button class="btn btn-sm btn-outline-secondary" type="submit">切换启用状态</button>
+            </form>
+          </div>
+          {% if p.description %}<div class="text-muted small mt-2">{{ p.description }}</div>{% endif %}
+          <ol class="mt-3 mb-0 small">
+            {% for item in p.items.all %}
+              <li>{{ item.project.name }}{% if item.tip %}（{{ item.tip }}）{% endif %}</li>
+            {% empty %}
+              <li class="text-muted">暂无行程节点。</li>
+            {% endfor %}
+          </ol>
+        </div>
+      {% empty %}
+        <div class="text-muted">暂无模板。</div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

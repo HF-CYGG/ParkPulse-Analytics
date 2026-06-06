@@ -1,0 +1,222 @@
+{# 游客端个人中心页面：展示资料维护、密码修改与快捷入口，并回显各自表单错误。 #}
+{% extends "visitor/base.html" %}
+{% block title %}我的{% endblock %}
+{% block content %}
+  <nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb small mb-0">
+      <li class="breadcrumb-item"><a href="{% url 'visitor_index' %}">首页</a></li>
+      <li class="breadcrumb-item active" aria-current="page">我的</li>
+    </ol>
+  </nav>
+
+  <div class="mb-4">
+    <h1 class="h3 fw-bold mb-1">你好，{{ user.username }}</h1>
+    <p class="text-muted small mb-0">个人中心 · 快捷入口</p>
+  </div>
+
+  {% if is_admin %}
+    <div class="alert alert-primary border-0 shadow-sm mb-4">
+      <strong>当前身份：管理员</strong>
+      <p class="small mb-3 mt-2 mb-0">运营数据与系统管理请进入后台。</p>
+      <a class="btn btn-primary btn-sm" href="/">进入管理后台</a>
+    </div>
+  {% elif is_staff_only %}
+    <div class="alert alert-primary border-0 shadow-sm mb-4">
+      <strong>当前身份：工作人员</strong>
+      <p class="small mb-3 mt-2 mb-0">录入与看板请在运营端操作。</p>
+      <a class="btn btn-primary btn-sm" href="{% url 'staff_workbench' %}">工作台</a>
+      <a class="btn btn-outline-secondary btn-sm ms-1" href="/">经营看板</a>
+    </div>
+  {% else %}
+    <p class="text-muted small mb-4">
+      游园公开账号：可浏览人气与项目介绍；需要数据录入请联系管理员开通工作人员权限。
+    </p>
+  {% endif %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-4">
+      <a class="text-decoration-none text-reset" href="{% url 'visitor_favorites' %}">
+        <div class="visitor-hub-tile visitor-card p-4 h-100">
+          <div class="text-primary fw-bold mb-1">我的收藏</div>
+          <div class="display-6 fw-bold text-body">{{ favorite_count }}</div>
+          <div class="small text-muted mt-2">管理已收藏项目</div>
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+      <a class="text-decoration-none text-reset" href="{% url 'visitor_feedback' %}">
+        <div class="visitor-hub-tile visitor-card p-4 h-100">
+          <div class="text-primary fw-bold mb-1">意见反馈</div>
+          <div class="display-6 fw-bold text-body">{{ feedback_count }}</div>
+          <div class="small text-muted mt-2">提交建议与查看记录</div>
+          {% if unread_admin_reply_count > 0 %}
+            <div class="small text-danger mt-1">有 {{ unread_admin_reply_count }} 条管理员新回复</div>
+          {% endif %}
+        </div>
+      </a>
+    </div>
+    <div class="col-sm-6 col-lg-4">
+      <a class="text-decoration-none text-reset" href="{% url 'visitor_project_list' %}">
+        <div class="visitor-hub-tile visitor-card p-4 h-100">
+          <div class="text-primary fw-bold mb-1">游乐项目</div>
+          <div class="small text-muted mt-3">浏览全部项目与开放状态</div>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-lg-6">
+      <div class="visitor-card p-4 h-100">
+        <h2 class="h6 fw-bold mb-3">个人资料</h2>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="op" value="update_profile">
+          {% if profile_form.non_field_errors %}
+            <div class="alert alert-danger py-2 small">
+              {% for error in profile_form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_account">
+              <span class="d-block mb-1">{{ profile_form.account.label }}</span>
+              {{ profile_form.account }}
+            </label>
+            {% if profile_form.account.errors %}
+              <div class="invalid-feedback d-block small">{{ profile_form.account.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_nickname">
+              <span class="d-block mb-1">{{ profile_form.nickname.label }}</span>
+              {{ profile_form.nickname }}
+            </label>
+            {% if profile_form.nickname.errors %}
+              <div class="invalid-feedback d-block small">{{ profile_form.nickname.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_preference_tags">
+              <span class="d-block mb-1">{{ profile_form.preference_tags.label }}</span>
+              {{ profile_form.preference_tags }}
+            </label>
+            {% if profile_form.preference_tags.errors %}
+              <div class="invalid-feedback d-block small">{{ profile_form.preference_tags.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small d-block" for="id_age_group">
+                <span class="d-block mb-1">{{ profile_form.age_group.label }}</span>
+                {{ profile_form.age_group }}
+              </label>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small d-block" for="id_consumption_level">
+                <span class="d-block mb-1">{{ profile_form.consumption_level.label }}</span>
+                {{ profile_form.consumption_level }}
+              </label>
+            </div>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label small d-block" for="id_available_minutes">
+                <span class="d-block mb-1">{{ profile_form.available_minutes.label }}</span>
+                {{ profile_form.available_minutes }}
+              </label>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small d-block" for="id_budget_amount">
+                <span class="d-block mb-1">{{ profile_form.budget_amount.label }}</span>
+                {{ profile_form.budget_amount }}
+              </label>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-3 mb-3">
+            <label class="form-check">
+              {{ profile_form.with_children }}
+              <span class="form-check-label">{{ profile_form.with_children.label }}</span>
+            </label>
+            <label class="form-check">
+              {{ profile_form.with_elderly }}
+              <span class="form-check-label">{{ profile_form.with_elderly.label }}</span>
+            </label>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_phone">
+              <span class="d-block mb-1">{{ profile_form.phone.label }}</span>
+              {{ profile_form.phone }}
+            </label>
+            {% if profile_form.phone.errors %}
+              <div class="invalid-feedback d-block small">{{ profile_form.phone.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_email">
+              <span class="d-block mb-1">{{ profile_form.email.label }}</span>
+              {{ profile_form.email }}
+            </label>
+            {% if profile_form.email.errors %}
+              <div class="invalid-feedback d-block small">{{ profile_form.email.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <button class="btn btn-primary" type="submit">保存资料</button>
+        </form>
+      </div>
+    </div>
+    <div class="col-lg-6">
+      <div class="visitor-card p-4 h-100">
+        <h2 class="h6 fw-bold mb-3">修改密码</h2>
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="op" value="change_password">
+          {% if pwd_form.non_field_errors %}
+            <div class="alert alert-danger py-2 small">
+              {% for error in pwd_form.non_field_errors %}
+                <div>{{ error }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_old_password">
+              <span class="d-block mb-1">{{ pwd_form.old_password.label }}</span>
+              {{ pwd_form.old_password }}
+            </label>
+            {% if pwd_form.old_password.errors %}
+              <div class="invalid-feedback d-block small">{{ pwd_form.old_password.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_new_password1">
+              <span class="d-block mb-1">{{ pwd_form.new_password1.label }}</span>
+              {{ pwd_form.new_password1 }}
+            </label>
+            {% if pwd_form.new_password1.errors %}
+              <div class="invalid-feedback d-block small">{{ pwd_form.new_password1.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label small d-block" for="id_new_password2">
+              <span class="d-block mb-1">{{ pwd_form.new_password2.label }}</span>
+              {{ pwd_form.new_password2 }}
+            </label>
+            {% if pwd_form.new_password2.errors %}
+              <div class="invalid-feedback d-block small">{{ pwd_form.new_password2.errors.0 }}</div>
+            {% endif %}
+          </div>
+          <button class="btn btn-outline-primary" type="submit">更新密码</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+    <a class="btn btn-outline-primary" href="{% url 'visitor_index' %}">游园首页</a>
+    <form class="m-0" method="post" action="/logout/">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-outline-secondary">退出登录</button>
+    </form>
+  </div>
+{% endblock %}

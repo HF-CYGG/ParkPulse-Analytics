@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block title %}批量导入游玩记录 - ParkPulse Analytics{% endblock %}
+{% block page_title %}游玩记录批量导入{% endblock %}
+
+{% block content %}
+  <div class="card shadow-sm border-0 mb-3">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+          <h2 class="mb-1">批量导入游玩记录</h2>
+          <div class="small text-muted">将 CSV/XLSX 的行数据批量写入系统</div>
+        </div>
+        <span class="badge text-bg-primary">工作人员入口</span>
+      </div>
+
+      <form method="post" enctype="multipart/form-data" class="row g-3">
+        {% csrf_token %}
+
+        <div class="col-md-7">
+          <label class="form-label">选择文件（CSV 或 XLSX）</label>
+          <input
+            class="form-control"
+            type="file"
+            name="file"
+            accept=".csv,.xlsx"
+            required
+          />
+          <div class="form-text">
+            建议表头字段（与本系统导出保持一致）：
+            `项目名称`、`游玩时间`、`排队时长(分钟)`、`重复次数`、`状态快照`、`备注`
+            （其中 `备注` 可为空）。
+          </div>
+        </div>
+
+        <div class="col-md-5">
+          <div class="border rounded p-3 bg-light">
+            <div class="fw-bold mb-2">导入规则</div>
+            <ul class="small text-muted mb-0">
+              <li>导入成功的记录 `录入人` 自动设置为当前用户。</li>
+              <li>若项目状态为“关停”，该行会被跳过。</li>
+              <li>仅在当前请求内统计错误行，不会影响已成功写入的其他行。</li>
+            </ul>
+          </div>
+
+          <div class="border rounded p-3 bg-light mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <div class="fw-bold">CSV 导入模板</div>
+              <a class="btn btn-sm btn-outline-primary" href="/records/import/template.csv">下载模板 CSV</a>
+            </div>
+            <div class="small text-muted mb-2">请保持表头字段一致，按行填写数据即可。</div>
+            <div class="border rounded p-2 bg-white" style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size: 12px; overflow: auto;">
+              项目名称,游玩时间,排队时长(分钟),重复次数,状态快照,备注,录入人<br/>
+              过山车,2026-04-15 10:00,15,1,正常,示例数据,（可留空）
+            </div>
+            <div class="small text-muted mt-2">
+              XLSX 也按同样列名/含义上传即可（系统会从表头识别列）。
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">开始导入</button>
+          <a class="btn btn-outline-secondary" href="/records/new/">返回录入页</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if success_count or fail_count or errors %}
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div class="fw-bold">导入结果</div>
+          <div class="small text-muted">成功 {{ success_count }} 条 · 失败 {{ fail_count }} 条</div>
+        </div>
+
+        {% if errors %}
+          <div class="mt-2">
+            <div class="fw-bold text-danger mb-2">失败行预览（最多显示前 20 条）</div>
+            <div class="text-muted small mb-2">错误内容格式：第X行：原因</div>
+            <div class="border rounded p-2 bg-white" style="max-height: 280px; overflow: auto;">
+              <ul class="mb-0 small">
+                {% for e in errors %}
+                  {% if forloop.counter <= 20 %}
+                    <li class="text-danger">{{ e }}</li>
+                  {% endif %}
+                {% endfor %}
+                {% if errors|length > 20 %}
+                  <li class="text-muted">... 还有 {{ errors|length|add:"-20" }} 条错误未展示</li>
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+        {% else %}
+          <div class="text-success">所有行均成功导入。</div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+

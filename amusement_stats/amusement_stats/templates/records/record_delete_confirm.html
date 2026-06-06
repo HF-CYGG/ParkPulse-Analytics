@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}删除游玩记录 - ParkPulse Analytics{% endblock %}
+
+{% block content %}
+  <div class="card shadow-sm border-0">
+    <div class="card-body">
+      <h4>确认删除该记录？</h4>
+      <p class="text-muted mb-2">
+        {{ record.play_time|date:"Y-m-d H:i" }} · {{ record.project.name }} · 排队 {{ record.queue_time }} 分钟
+      </p>
+      <p class="small text-muted mb-3">
+        录入者：{% if record.created_by %}{{ record.created_by.username }}{% else %}—{% endif %}
+      </p>
+      <form method="post">
+        {% csrf_token %}
+        <button class="btn btn-danger" type="submit">确认删除</button>
+        <a class="btn btn-outline-secondary" href="/records/new/">取消</a>
+      </form>
+    </div>
+  </div>
+{% endblock %}
+

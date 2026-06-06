@@ -1,0 +1,115 @@
+{% load static %}
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>登录 - ParkPulse Analytics</title>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+  </head>
+  <body class="app-body auth-login" data-default-theme="{{ request.session.ui_theme|default:'light' }}">
+    <header class="border-bottom bg-white bg-opacity-90 py-2 px-3 position-relative" style="z-index: 2">
+      <div class="container d-flex justify-content-between align-items-center">
+        <span class="small text-muted">工作人员登录</span>
+        <a class="small link-secondary" href="{% url 'visitor_index' %}">游客指南</a>
+      </div>
+    </header>
+
+    {% if messages %}
+      <div class="container pt-3">
+        {% for message in messages %}
+          <div class="alert alert-info shadow-sm">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <section class="login-shell">
+      <div class="login-shell-bg" aria-hidden="true"></div>
+      <div class="container position-relative">
+        <div class="row justify-content-center align-items-stretch g-4 g-xl-5 py-4 py-lg-5">
+          <div class="col-12 d-lg-none">
+            <div class="login-mobile-hero text-center text-white px-2 py-3 rounded-4">
+              <div class="login-hero-badge d-inline-block mb-2">运营数据中台</div>
+              <h1 class="h4 fw-bold mb-1">ParkPulse Analytics</h1>
+              <p class="small opacity-75 mb-0">看板 · 录入 · 审计一体化</p>
+            </div>
+          </div>
+
+          <div class="col-lg-6 col-xl-5 d-none d-lg-flex">
+            <div class="login-hero text-white w-100">
+              <div class="login-hero-badge mb-3">运营数据中台</div>
+              <h1 class="login-hero-title display-6 fw-bold mb-3 lh-sm">
+                游乐场<br />
+                数据运营平台
+              </h1>
+              <p class="login-hero-lead mb-4 opacity-90">
+                客流趋势、项目热度与一线录入协同，在同一套界面里完成闭环。
+              </p>
+              <ul class="login-hero-list list-unstyled mb-0 small opacity-90">
+                <li class="d-flex gap-2 mb-2">
+                  <span class="login-hero-dot" aria-hidden="true">✓</span>
+                  <span>经营看板与多维图表</span>
+                </li>
+                <li class="d-flex gap-2 mb-2">
+                  <span class="login-hero-dot" aria-hidden="true">✓</span>
+                  <span>游玩记录与审计追踪</span>
+                </li>
+                <li class="d-flex gap-2">
+                  <span class="login-hero-dot" aria-hidden="true">✓</span>
+                  <span>管理员 / 工作人员角色分流</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="col-lg-5 col-xl-4">
+            <div class="login-panel card border-0 shadow-lg">
+              <div class="card-body p-4 p-sm-5">
+                <div class="text-center text-lg-start mb-4">
+                  <h2 class="fw-bold mb-1">欢迎回来</h2>
+                  <p class="text-muted small mb-0">支持账号 / 昵称 / 手机号 / 邮箱登录</p>
+                </div>
+
+                {% if form.non_field_errors %}
+                  <div class="alert alert-danger py-2 px-3 small mb-4" role="alert">
+                    {% for err in form.non_field_errors %}
+                      <div class="mb-0">{{ err }}</div>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+
+                <form method="post" action="" novalidate>
+                  {% csrf_token %}
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold" for="{{ form.username.id_for_label }}">账号</label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                      <div class="invalid-feedback d-block small">{{ form.username.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="mb-4">
+                    <label class="form-label fw-semibold" for="{{ form.password.id_for_label }}">密码</label>
+                    {{ form.password }}
+                    {% if form.password.errors %}
+                      <div class="invalid-feedback d-block small">{{ form.password.errors.0 }}</div>
+                    {% endif %}
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-lg w-100 rounded-3 py-2 shadow-sm">进入系统</button>
+                  <p class="text-center text-muted small mt-4 mb-0">
+                    忘记密码请联系 <span class="text-body-secondary">系统管理员</span>
+                  </p>
+                  <p class="text-center small mt-3 mb-0">
+                    <a class="link-secondary" href="{% url 'visitor_index' %}">游客浏览 · 园区与项目指南</a>
+                  </p>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
+  </body>
+</html>

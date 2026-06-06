@@ -1,0 +1,48 @@
+# Python cache and test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments and local dependency caches
+venv/
+.venv/
+amusement_stats/venv/
+amusement_stats/offline_packages/
+
+# Django local runtime data
+amusement_stats/db.sqlite3
+amusement_stats/*.sqlite3
+amusement_stats/logs/
+amusement_stats/media/
+!amusement_stats/media/.gitkeep
+amusement_stats/staticfiles/
+
+# Local configuration and secrets
+.env
+.env.*
+*.env
+!.env.example
+local_settings.py
+
+# Generated backups and source snapshots
+amusement_stats_source_tree_*/
+amusement_stats_source_tree_*.zip
+*.bak
+*.tmp
+
+# Logs
+*.log
+*.log.*
+
+# IDE, editor, and OS files
+.trae/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

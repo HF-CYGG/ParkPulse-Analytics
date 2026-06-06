@@ -1,0 +1,71 @@
+﻿{% extends "visitor/base.html" %}
+{% block title %}首页{% endblock %}
+
+{% block content %}
+  {% include "visitor/_weather_alert.html" %}
+
+  <div class="visitor-hero mb-4">
+    <div class="row align-items-center g-3">
+      <div class="col-lg-8">
+        <h1 class="h2 fw-bold mb-2">欢迎来到游乐场</h1>
+        <p class="mb-0 opacity-90">
+          浏览开放项目、查看近七日「人气参考」档位（不含具体人次，保护运营数据隐私），提前规划游园路线。
+        </p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <div class="d-inline-block text-start bg-white bg-opacity-10 rounded-3 px-3 py-2 small">
+          <div>在册项目 <strong>{{ project_total }}</strong> 个</div>
+          <div>非关闭 <strong>{{ open_count }}</strong> 个</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+      <div>
+        <div class="small text-muted">园区营业时间（后台可配置）</div>
+        <div class="h4 mb-0">{{ operating_hours_text|default:"10:00-21:00（以现场公告为准）" }}</div>
+      </div>
+      <a class="btn btn-outline-primary" href="{% url 'visitor_project_list' %}">查看项目排队信息</a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-7">
+      <h2 class="h5 fw-bold mb-3">近七日人气参考</h2>
+      <p class="text-muted small mb-3">按全园游玩记录聚合排名，仅展示热度档位（高/中/低），不展示精确人次。</p>
+      {% if hot_rows %}
+        <div class="list-group shadow-sm">
+          {% for row in hot_rows %}
+            <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center flex-wrap gap-2" href="{% url 'visitor_project_detail' row.project_id %}">
+              <div>
+                <span class="badge bg-primary rounded-pill me-2">#{{ row.rank }}</span>
+                <span class="fw-semibold">{{ row.project_name }}</span>
+                <div class="small text-muted mt-1">{{ row.heat_hint }}</div>
+              </div>
+              <span class="visitor-badge-heat visitor-heat-{{ row.heat_level }}">热度 {{ row.heat_level }}</span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="visitor-card p-4 text-muted">暂无统计样本，欢迎稍后再来查看。</div>
+      {% endif %}
+    </div>
+
+    <div class="col-lg-5">
+      <h2 class="h5 fw-bold mb-3">快速入口</h2>
+      <div class="d-grid gap-2">
+        <a class="btn btn-primary btn-lg rounded-3" href="{% url 'visitor_project_list' %}">查看全部游乐项目</a>
+        <a class="btn btn-outline-primary rounded-3" href="{% url 'visitor_analytics' %}">数据洞察（交互图表）</a>
+        <a class="btn btn-outline-primary rounded-3" href="{% url 'visitor_map' %}">园区地图</a>
+        <a class="btn btn-outline-primary rounded-3" href="{% url 'visitor_itinerary' %}">行程规划</a>
+        <a class="btn btn-success rounded-3" href="{% url 'visitor_recommendations' %}">智能路线推荐</a>
+        {% include "visitor/_account_actions.html" with mode="btn" %}
+      </div>
+      <div class="visitor-card p-3 mt-3 small text-muted">
+        <strong class="text-body">提示</strong>：项目实时开放状态以现场为准；“维护/关闭”项目会在列表中明确标注。
+      </div>
+    </div>
+  </div>
+{% endblock %}
