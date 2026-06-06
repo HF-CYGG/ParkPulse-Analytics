@@ -19,6 +19,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
+from django.http import JsonResponse
 from django.urls import path, include
 
 from accounts.views import StaffLoginView
@@ -26,6 +27,7 @@ from dashboard.views import spatial_heat
 from projects.views import queue_update_count_api
 
 urlpatterns = [
+    path("healthz/", lambda request: JsonResponse({"status": "ok"}), name="healthz"),
     path("admin/", admin.site.urls),
     path(
         "login/",
