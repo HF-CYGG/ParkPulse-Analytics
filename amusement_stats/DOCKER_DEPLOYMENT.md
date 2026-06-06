@@ -40,7 +40,17 @@ ACR_PASSWORD=你的阿里云 ACR 密码或访问凭证
 
 如果使用 GitHub Actions 构建并推送镜像，建议关闭阿里云 ACR 的“自动构建规则”，避免重复构建。
 
-如果仍要使用 ACR 内置构建，则规则必须按子目录填写：
+当前仓库根目录也提供了兼容用 `Dockerfile`，因此 ACR 内置构建可以继续使用默认规则：
+
+```text
+类型：Branch
+Branch/Tag：main
+构建上下文目录：/
+Dockerfile 文件名：Dockerfile
+镜像版本：latest
+```
+
+也可以直接按 Django 子目录构建：
 
 ```text
 类型：Branch
@@ -50,24 +60,17 @@ Dockerfile 文件名：Dockerfile
 镜像版本：latest
 ```
 
-不要使用：
-
-```text
-构建上下文目录：/
-Dockerfile 文件名：Dockerfile
-```
-
-因为仓库根目录没有 `Dockerfile`，真实文件路径是：
-
-```text
-amusement_stats/Dockerfile
-```
-
-这也是 ACR 日志中 `open .../Dockerfile: no such file or directory` 的原因。
+此前 ACR 日志中 `open .../Dockerfile: no such file or directory` 的原因是：ACR 使用了根目录构建规则，但仓库根目录当时没有 `Dockerfile`。
 
 ## 本地构建验证
 
 在仓库根目录执行：
+
+```powershell
+docker build -t parkpulse-analytics:local .
+```
+
+或显式使用 Django 子目录 Dockerfile：
 
 ```powershell
 docker build -f amusement_stats/Dockerfile -t parkpulse-analytics:local amusement_stats
