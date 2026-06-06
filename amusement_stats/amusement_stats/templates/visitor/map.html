@@ -1,13 +1,70 @@
-{% extends "visitor/base.html" %}
-{% block title %}园区地图{% endblock %}
-{% block content %}
-  <div class="mb-4">
-    <h1 class="h3 fw-bold mb-2">园区地图</h1>
-    <p class="text-muted small mb-0">
-      简易示意地图（OpenStreetMap）。未填写坐标的项目按所属区域在示意点位附近自动偏移，可在管理端编辑中补充经纬度以贴合实际位置。
-    </p>
-  </div>
-  <div class="visitor-card p-2 shadow-sm overflow-hidden rounded-3">
-    {{ map_html|safe }}
-  </div>
-{% endblock %}
+{% extends "visitor/base.html" %}
+
+{% block title %}园区地图{% endblock %}
+
+{% block content %}
+  <div class="mb-4">
+    <h1 class="h3 fw-bold mb-2">园区地图</h1>
+    <p class="text-muted small mb-0">
+      简易示意地图。未填写坐标的项目按所属区域自动偏移；下方可查看项目热度辐射和周边设施连带热度。
+    </p>
+  </div>
+
+  <div class="visitor-card p-2 shadow-sm overflow-hidden rounded-3">
+    <iframe
+      class="w-100 border-0 rounded-3"
+      style="height: 560px;"
+      title="园区项目地图"
+      srcdoc="{{ map_html|escape }}"
+      loading="lazy"
+      referrerpolicy="no-referrer"
+    ></iframe>
+  </div>
+
+  <section class="visitor-card p-4 mt-4">
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+      <h2 class="h5 fw-bold mb-0">项目热度详情</h2>
+      <span class="badge text-bg-primary">热度辐射</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-md-5">
+        <div class="list-group" id="visitorMapHeatList">
+          {% for item in heat_payload.items %}
+            <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" type="button" data-project-id="{{ item.project_id }}">
+              <span>{{ item.project_name }}</span>
+              <span class="badge text-bg-success">{{ item.score }}</span>
+            </button>
+          {% empty %}
+            <div class="text-muted small">暂无热度数据。</div>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="col-md-7">
+        <div id="mapHeatDetail" class="small text-muted border rounded-3 p-3 h-100">点击项目查看热度辐射范围和周边设施连带热度。</div>
+      </div>
+    </div>
+  </section>
+
+  {{ heat_payload.items|json_script:"visitorMapHeatDataJson" }}
+  <script>
+    (function () {
+      const data = JSON.parse(document.getElementById("visitorMapHeatDataJson").textContent || "[]");
+      window.visitorMapHeatData = data;
+      const detail = document.getElementById("mapHeatDetail");
+      document.querySelectorAll("#visitorMapHeatList [data-project-id]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          const id = Number(button.dataset.projectId);
+          const item = data.find(function (row) { return row.project_id === id; });
+          if (!item) return;
+          document.querySelectorAll("#visitorMapHeatList [data-project-id]").forEach(function (node) {
+            node.classList.toggle("active", node === button);
+          });
+          const facilities = (item.facilities || []).map(function (facility) {
+            return facility.name + " " + facility.linked_heat + "分";
+          }).join("；") || "暂无周边设施连带热度";
+          detail.textContent = item.project_name + "：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + facilities;
+        });
+      });
+    })();
+  </script>
+{% endblock %}

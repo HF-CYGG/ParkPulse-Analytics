@@ -375,3 +375,49 @@ class VisitorRecommendationServiceTests(TestCase):
         self.assertNotIn(self.closed_project.id, route_ids)
         self.assertEqual(result["avoid_peak"][0]["project_id"], self.family_project.id)
         self.assertGreaterEqual(len(result["combos"]), 1)
+
+
+class VisitorProjectDetailRecommendationTests(TestCase):
+    def test_project_detail_shows_similar_low_queue_projects(self):
+        current = Project.objects.create(
+            name="Busy Family Ride",
+            project_type=Project.TYPE_FAMILY,
+            queue_count=28,
+            capacity=30,
+        )
+        alternative = Project.objects.create(
+            name="Quiet Family Ride",
+            project_type=Project.TYPE_FAMILY,
+            queue_count=2,
+            capacity=30,
+        )
+        Project.objects.create(
+            name="Closed Alternative",
+            project_type=Project.TYPE_FAMILY,
+            queue_count=0,
+            capacity=30,
+            status=Project.STATUS_CLOSED,
+        )
+
+        response = self.client.get(reverse("visitor_project_detail", args=[current.id]))
+
+        self.assertContains(response, "相似低排队项目")
+        self.assertContains(response, alternative.name)
+        self.assertNotContains(response, "Closed Alternative")
+
+
+class VisitorMapHeatPayloadTests(TestCase):
+    def test_visitor_map_contains_heat_radiation_payload(self):
+        Project.objects.create(
+            name="Map Heat Ride",
+            project_type=Project.TYPE_VIEW,
+            queue_count=6,
+            capacity=30,
+            latitude=31.230000,
+            longitude=121.470000,
+        )
+
+        response = self.client.get(reverse("visitor_map"))
+
+        self.assertContains(response, "visitorMapHeatData")
+        self.assertContains(response, "mapHeatDetail")

@@ -3,11 +3,13 @@ from django.contrib import admin
 from .models import (
     ForecastEvaluation,
     HolidayCalendar,
+    MaintenanceWorkOrder,
     ProjectForecast,
     ProjectHeatSnapshot,
     ProjectIncident,
     ProjectReview,
     PromotionEvent,
+    ServiceFacility,
 )
 
 
@@ -41,9 +43,23 @@ class ProjectReviewAdmin(admin.ModelAdmin):
 
 @admin.register(ProjectIncident)
 class ProjectIncidentAdmin(admin.ModelAdmin):
-    list_display = ("project", "incident_type", "severity", "started_at", "ended_at", "downtime_minutes")
-    list_filter = ("incident_type", "severity", "started_at")
+    list_display = ("project", "incident_type", "severity", "status", "handled_by", "started_at", "ended_at", "downtime_minutes")
+    list_filter = ("incident_type", "severity", "status", "started_at")
     search_fields = ("project__name", "description")
+
+
+@admin.register(MaintenanceWorkOrder)
+class MaintenanceWorkOrderAdmin(admin.ModelAdmin):
+    list_display = ("project", "incident", "status", "handled_by", "started_at", "ended_at")
+    list_filter = ("status", "started_at")
+    search_fields = ("project__name", "notes")
+
+
+@admin.register(ServiceFacility)
+class ServiceFacilityAdmin(admin.ModelAdmin):
+    list_display = ("name", "facility_type", "region", "is_active")
+    list_filter = ("facility_type", "region", "is_active")
+    search_fields = ("name",)
 
 
 @admin.register(HolidayCalendar)

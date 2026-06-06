@@ -13,7 +13,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST, require_http_methods
 
 from accounts.models import VisitorProfile
-from analytics.services.recommendations import build_recommendations
+from analytics.services.recommendations import build_recommendations, similar_low_queue_projects
+from analytics.services.spatial import build_spatial_heat_payload
 from core.auth_utils import STAFF_GROUP, user_is_admin
 from core.models import SiteConfig
 from projects.models import Project
@@ -99,6 +100,7 @@ def visitor_project_detail(request, project_id):
             "project": project,
             "region_choices": Project.REGION_CHOICES,
             "is_favorited": project.id in fav_ids,
+            "similar_low_queue_projects": similar_low_queue_projects(project),
         },
     )
 
@@ -315,7 +317,7 @@ def visitor_map(request):
             "<code>pip install -r requirements.txt</code>（或 <code>pip install folium</code>）。"
             "</div>"
         )
-    return render(request, "visitor/map.html", {"map_html": map_html})
+    return render(request, "visitor/map.html", {"map_html": map_html, "heat_payload": build_spatial_heat_payload(days=7)})
 
 
 def visitor_api_hot(request):

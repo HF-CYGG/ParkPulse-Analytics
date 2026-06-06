@@ -89,4 +89,29 @@
       </div>
     </div>
   </div>
+
+  {% if similar_low_queue_projects %}
+    <section class="visitor-card p-4 p-md-5">
+      <div class="d-flex justify-content-between align-items-center gap-3 mb-3">
+        <h2 class="h5 fw-bold mb-0">相似低排队项目</h2>
+        <span class="badge text-bg-success">避峰替代</span>
+      </div>
+      <div class="row g-3">
+        {% for item in similar_low_queue_projects %}
+          <div class="col-md-4">
+            <a class="text-decoration-none text-reset" href="{% url 'visitor_project_detail' item.project_id %}">
+              <div class="border rounded-3 p-3 h-100 bg-light bg-opacity-50">
+                <div class="fw-semibold mb-1">{{ item.project_name }}</div>
+                <div class="small text-muted mb-2">{{ item.reason }}</div>
+                <div class="d-flex justify-content-between small">
+                  <span>排队 {{ item.queue_count }} 人</span>
+                  <span>推荐 {{ item.recommend_score }}</span>
+                </div>
+              </div>
+            </a>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}

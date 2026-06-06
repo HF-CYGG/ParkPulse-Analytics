@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from analytics.services.forecasting import build_forecast_rows, evaluate_baseline_forecasts
+from analytics.forecasting.pipeline import run_forecast_pipeline
 
 
 class Command(BaseCommand):
@@ -15,12 +15,9 @@ class Command(BaseCommand):
         model = options["model"]
         days = max(7, min(int(options["days"]), 365))
         horizon = max(1, min(int(options["horizon"]), 14))
-        if model in {"prophet", "lstm", "all"}:
-            self.stdout.write(self.style.WARNING("Prophet/LSTM are optional enterprise extensions; baseline forecast is generated for runtime stability."))
-        payload = build_forecast_rows(days=days, horizon=horizon, model_name="baseline", persist=True)
-        evaluations = evaluate_baseline_forecasts(days=days, horizon=horizon)
+        payload = run_forecast_pipeline(model=model, days=days, horizon=horizon, persist=True)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Generated {sum(len(item['forecast']) for item in payload['items'])} forecast rows and {len(evaluations)} evaluations."
+                f"Generated {sum(len(item['forecast']) for item in payload['items'])} forecast rows with {payload['mode']} mode."
             )
         )

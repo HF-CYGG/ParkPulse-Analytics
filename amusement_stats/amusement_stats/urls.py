@@ -22,6 +22,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path, include
 
 from accounts.views import StaffLoginView
+from dashboard.views import spatial_heat
 from projects.views import queue_update_count_api
 
 urlpatterns = [
@@ -33,6 +34,7 @@ urlpatterns = [
     ),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("", include("dashboard.urls")),
+    path("dashboard/spatial-heat/", spatial_heat, name="dashboard_spatial_heat_prefixed"),
     path("", include("core.urls")),
     path("", include("accounts.urls")),
     path("records/", include("records.urls")),

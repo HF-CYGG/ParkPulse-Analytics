@@ -131,6 +131,28 @@
       <hr class="my-3" />
       <div class="d-flex justify-content-between align-items-center mb-2"><h6 class="mb-0">综合热度评分排行（Score）</h6><span class="badge text-bg-secondary">多维评分</span></div>
       <div id="hotScoreChart" class="chart-box" style="height: 240px;"></div>
+      <div id="projectComparePanel" class="border rounded-3 p-3 mt-3 bg-light bg-opacity-50">
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+          <h6 class="mb-0">项目对比模式</h6>
+          <span class="badge text-bg-info">最多 3 项</span>
+        </div>
+        <div class="row g-2 mb-2" id="projectCompareChoices">
+          {% for row in score_rows|slice:":6" %}
+            <div class="col-md-4">
+              <label class="form-check small mb-0">
+                <input class="form-check-input project-compare-check" type="checkbox" value="{{ row.project }}" data-score="{{ row.score }}" data-queue="{{ row.avg_queue }}" data-repeat="{{ row.repeat_rate }}" data-abnormal="{{ row.abnormal_rate }}" {% if forloop.counter <= 2 %}checked{% endif %}>
+                <span class="form-check-label">{{ row.project }}</span>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light"><tr><th>项目</th><th>热度</th><th>排队</th><th>复玩率</th><th>异常率</th></tr></thead>
+            <tbody id="projectCompareBody"></tbody>
+          </table>
+        </div>
+      </div>
       <p class="text-muted small mb-0 mt-2">口径：人次、重复游玩率、周转率为正向；排队时长和异常状态占比为负向；归一化后加权得到 0~100 分。</p>
     </div></div></div>
 
@@ -325,6 +347,21 @@
           detail.innerHTML = "<strong>" + escapeHtml(item.project_name) + "</strong>：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + linked;
         });
       });
+      const compareBody = document.getElementById("projectCompareBody");
+      const compareChecks = Array.from(document.querySelectorAll(".project-compare-check"));
+      function renderCompare() {
+        if (!compareBody) return;
+        const checked = compareChecks.filter(function (box) { return box.checked; }).slice(0, 3);
+        compareChecks.forEach(function (box) {
+          if (!box.checked && checked.length >= 3) box.disabled = true;
+          else box.disabled = false;
+        });
+        compareBody.innerHTML = checked.map(function (box) {
+          return "<tr><td>" + escapeHtml(box.value) + "</td><td>" + box.dataset.score + "</td><td>" + box.dataset.queue + " 分钟</td><td>" + box.dataset.repeat + "%</td><td>" + box.dataset.abnormal + "%</td></tr>";
+        }).join("") || "<tr><td colspan=\"5\" class=\"text-center text-muted\">请选择 2-3 个项目进行对比。</td></tr>";
+      }
+      compareChecks.forEach(function (box) { box.addEventListener("change", renderCompare); });
+      renderCompare();
     })();
   </script>
 {% endblock %}

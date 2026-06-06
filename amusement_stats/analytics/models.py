@@ -7,6 +7,7 @@ from projects.models import Project
 class ProjectHeatSnapshot(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="heat_snapshots", verbose_name="项目")
     snapshot_time = models.DateTimeField("快照时间", db_index=True)
+    granularity = models.CharField("时间粒度", max_length=20, default="day")
     score = models.FloatField("综合热度")
     base_score = models.FloatField("基础指标")
     time_score = models.FloatField("时间指标")
@@ -45,6 +46,8 @@ class ProjectForecast(models.Model):
     predicted_score = models.FloatField("预测热度")
     predicted_visits = models.FloatField("预测人次", default=0)
     predicted_queue = models.FloatField("预测排队时长", default=0)
+    confidence = models.CharField("置信说明", max_length=120, blank=True, default="")
+    is_peak_alert = models.BooleanField("是否高峰预警", default=False)
     alert_level = models.CharField("告警级别", max_length=20, choices=ALERT_CHOICES, default=ALERT_NONE)
     warning = models.CharField("告警文案", max_length=255, blank=True, default="")
     factors = models.JSONField("影响因素", default=dict, blank=True)
@@ -67,11 +70,14 @@ class ForecastEvaluation(models.Model):
     model_name = models.CharField("模型", max_length=40)
     train_start = models.DateField("训练开始")
     train_end = models.DateField("训练结束")
+    validation_start = models.DateField("验证开始", null=True, blank=True)
+    validation_end = models.DateField("验证结束", null=True, blank=True)
     horizon_days = models.PositiveIntegerField("预测天数", default=7)
     mae = models.FloatField("MAE")
     mse = models.FloatField("MSE")
     r2 = models.FloatField("R2")
     sample_size = models.PositiveIntegerField("样本量", default=0)
+    parameters = models.JSONField("参数", default=dict, blank=True)
     evaluated_at = models.DateTimeField("评估时间", auto_now_add=True)
 
     class Meta:
@@ -86,8 +92,12 @@ class ForecastEvaluation(models.Model):
 class ProjectReview(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="reviews", verbose_name="项目")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="用户")
-    rating = models.PositiveSmallIntegerField("评分")
+    rating = models.PositiveSmallIntegerField("评分", default=0)
+    experience_score = models.PositiveSmallIntegerField("体验评分", default=0)
+    queue_reasonableness_score = models.PositiveSmallIntegerField("排队合理性", default=0)
+    safety_score = models.PositiveSmallIntegerField("安全评分", default=0)
     comment = models.TextField("评论", blank=True, default="")
+    image = models.ImageField("图片", upload_to="project_reviews/", blank=True, null=True)
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     class Meta:
@@ -98,6 +108,13 @@ class ProjectReview(models.Model):
     def __str__(self):
         return f"{self.project} {self.rating}"
 
+    def save(self, *args, **kwargs):
+        if not self.rating:
+            scores = [self.experience_score, self.queue_reasonableness_score, self.safety_score]
+            scores = [score for score in scores if score]
+            self.rating = round(sum(scores) / len(scores)) if scores else 0
+        super().save(*args, **kwargs)
+
 
 class ProjectIncident(models.Model):
     TYPE_FAULT = "fault"
@@ -105,6 +122,14 @@ class ProjectIncident(models.Model):
     TYPE_CHOICES = [
         (TYPE_FAULT, "故障"),
         (TYPE_MAINTENANCE, "维护"),
+    ]
+    STATUS_OPEN = "open"
+    STATUS_PROCESSING = "processing"
+    STATUS_RESOLVED = "resolved"
+    STATUS_CHOICES = [
+        (STATUS_OPEN, "待处理"),
+        (STATUS_PROCESSING, "处理中"),
+        (STATUS_RESOLVED, "已处理"),
     ]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="incidents", verbose_name="项目")
@@ -114,6 +139,17 @@ class ProjectIncident(models.Model):
     started_at = models.DateTimeField("开始时间")
     ended_at = models.DateTimeField("结束时间", null=True, blank=True)
     downtime_minutes = models.PositiveIntegerField("维护/停机分钟", default=0)
+    handled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="handled_project_incidents",
+        verbose_name="处理人",
+    )
+    status = models.CharField("状态", max_length=20, choices=STATUS_CHOICES, default=STATUS_OPEN)
+    image = models.ImageField("图片", upload_to="project_incidents/", blank=True, null=True)
+    notes = models.TextField("备注", blank=True, default="")
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     class Meta:
@@ -123,6 +159,62 @@ class ProjectIncident(models.Model):
 
     def __str__(self):
         return f"{self.project} {self.incident_type}"
+
+
+class MaintenanceWorkOrder(models.Model):
+    STATUS_PENDING = "pending"
+    STATUS_PROCESSING = "processing"
+    STATUS_DONE = "done"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "待处理"),
+        (STATUS_PROCESSING, "处理中"),
+        (STATUS_DONE, "已完成"),
+    ]
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="maintenance_work_orders", verbose_name="项目")
+    incident = models.ForeignKey(ProjectIncident, on_delete=models.SET_NULL, null=True, blank=True, related_name="work_orders", verbose_name="关联事件")
+    status = models.CharField("状态", max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    handled_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="处理人")
+    started_at = models.DateTimeField("开始时间")
+    ended_at = models.DateTimeField("结束时间", null=True, blank=True)
+    notes = models.TextField("备注", blank=True, default="")
+    image = models.ImageField("图片", upload_to="maintenance_work_orders/", blank=True, null=True)
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "维护工单"
+        verbose_name_plural = "维护工单"
+        ordering = ["-started_at"]
+
+    def __str__(self):
+        return f"{self.project} {self.status}"
+
+
+class ServiceFacility(models.Model):
+    TYPE_CATERING = "catering"
+    TYPE_RETAIL = "retail"
+    TYPE_REST = "rest"
+    TYPE_CHOICES = [
+        (TYPE_CATERING, "餐饮"),
+        (TYPE_RETAIL, "文创零售"),
+        (TYPE_REST, "休闲服务"),
+    ]
+
+    name = models.CharField("设施名称", max_length=120)
+    facility_type = models.CharField("设施类型", max_length=20, choices=TYPE_CHOICES, default=TYPE_REST)
+    region = models.CharField("所属区域", max_length=20, choices=Project.REGION_CHOICES, blank=True, default="")
+    latitude = models.DecimalField("纬度", max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField("经度", max_digits=9, decimal_places=6, blank=True, null=True)
+    is_active = models.BooleanField("启用", default=True)
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+
+    class Meta:
+        verbose_name = "服务设施"
+        verbose_name_plural = "服务设施"
+        ordering = ["region", "name"]
+
+    def __str__(self):
+        return self.name
 
 
 class HolidayCalendar(models.Model):

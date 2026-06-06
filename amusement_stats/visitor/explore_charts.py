@@ -202,4 +202,4 @@ def build_folium_map_html() -> str:
         m.fit_bounds([[min(lats) - pad, min(lngs) - pad], [max(lats) + pad, max(lngs) + pad]])
 
     folium.LayerControl(position="topright", collapsed=False).add_to(m)
-    return m._repr_html_()
+    return m.get_root().render()

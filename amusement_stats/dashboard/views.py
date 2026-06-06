@@ -543,6 +543,17 @@ def index(request):
     )
 
 
+@staff_or_admin_required
+def spatial_heat(request):
+    days = request.GET.get("days", "7")
+    try:
+        days_i = max(1, min(int(days), 180))
+    except ValueError:
+        days_i = 7
+    payload = build_spatial_heat_payload(days=days_i)
+    return render(request, "dashboard/spatial_heat.html", {"payload": payload, "days": days_i})
+
+
 @admin_required
 def export_csv(request):
     start_date = request.GET.get("start_date")

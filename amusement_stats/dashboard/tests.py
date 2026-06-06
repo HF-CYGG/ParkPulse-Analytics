@@ -64,7 +64,16 @@ class DashboardFlowTests(TestCase):
         # 页面主标题当前文案为“运营看板”，这里按真实用户可见文本断言。
         self.assertContains(response, "运营看板")
         self.assertContains(response, self.project.name)
+        self.assertContains(response, "projectComparePanel")
         self.assertGreaterEqual(response.context["metrics"]["total_visits"], 1)
+
+    def test_spatial_heat_page_renders_for_admin(self):
+        response = self.client.get(reverse("dashboard_spatial_heat"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "spatialHeatData")
+        self.assertContains(response, "spatialHeatCanvas")
+        self.assertContains(response, "spatialTimeSlider")
 
 
 class AnalyticsServiceContractTests(TestCase):
@@ -122,7 +131,7 @@ class AnalyticsServiceContractTests(TestCase):
 
         result = build_forecast_rows(days=30, horizon=7)
 
-        self.assertEqual(result["mode"], "baseline")
+        self.assertIn(result["mode"], {"moving_average", "linear_regression", "prophet", "lstm", "mixed"})
         self.assertGreaterEqual(len(result["items"]), 1)
         hot_row = next(item for item in result["items"] if item["project_id"] == self.project_hot.id)
         self.assertEqual(len(hot_row["forecast"]), 7)
