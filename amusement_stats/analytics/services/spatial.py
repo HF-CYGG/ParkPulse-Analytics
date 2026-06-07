@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 import math
+from datetime import timedelta
 
-from analytics.models import ServiceFacility
+from django.utils import timezone
+
+from analytics.models import ProjectForecast, ServiceFacility
 from analytics.services.heat import compute_project_heat_scores
 from visitor.explore_charts import project_map_latlng
 
 
-def build_spatial_heat_payload(*, days: int = 7) -> dict:
-    rows = compute_project_heat_scores(days=days)
+def build_spatial_heat_payload(*, days: int = 7, offset: int = 0) -> dict:
+    target_date = timezone.localdate() - timedelta(days=max(0, int(offset or 0)))
+    rows = compute_project_heat_scores(days=days, end_date=target_date)
     markers = []
     for row in rows:
         project = _project_from_row(row)
@@ -28,10 +32,13 @@ def build_spatial_heat_payload(*, days: int = 7) -> dict:
                 "facilities": _facility_heat(row, lat, lng),
                 "dimensions": row["dimensions"],
                 "metrics": row["metrics"],
+                "reasons": row.get("reasons", []),
+                "dimension_reasons": row.get("dimension_reasons", {}),
+                "forecast_alert": _forecast_alert(project.id),
             }
         )
     _apply_map_layout(markers)
-    return {"items": markers, "max_score": max((item["score"] for item in markers), default=0)}
+    return {"items": markers, "max_score": max((item["score"] for item in markers), default=0), "target_date": target_date.isoformat()}
 
 
 def _project_from_row(row):
@@ -41,6 +48,17 @@ def _project_from_row(row):
         return Project.objects.get(id=row["project_id"])
     except Project.DoesNotExist:
         return None
+
+
+def _forecast_alert(project_id: int) -> dict:
+    forecast = (
+        ProjectForecast.objects.filter(project_id=project_id, target_time__date__gte=timezone.localdate())
+        .order_by("-predicted_score")
+        .first()
+    )
+    if not forecast:
+        return {"level": "none", "warning": ""}
+    return {"level": forecast.alert_level, "warning": forecast.warning, "predicted_score": round(forecast.predicted_score, 1)}
 
 
 def _linked_heat(row: dict) -> list[dict]:

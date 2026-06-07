@@ -12,6 +12,7 @@ from analytics.models import (
     ProjectIncident,
     ProjectReview,
     ServiceFacility,
+    WeatherObservation,
 )
 from core.auth_utils import STAFF_GROUP
 from projects.models import Project
@@ -65,17 +66,25 @@ class AnalyticsEnterpriseRequirementTests(TestCase):
         work_order_fields = {field.name for field in MaintenanceWorkOrder._meta.fields}
         self.assertTrue({"project", "incident", "status", "handled_by", "started_at", "ended_at", "notes"}.issubset(work_order_fields))
 
+        weather_fields = {field.name for field in WeatherObservation._meta.fields}
+        self.assertTrue({"date", "weather_type", "temperature_c", "rain_mm", "humidity", "heat_multiplier", "description"}.issubset(weather_fields))
+
     def test_forecasting_pipeline_fallback_persists_forecasts_and_evaluations(self):
         from analytics.forecasting.pipeline import run_forecast_pipeline
 
         result = run_forecast_pipeline(model="all", days=30, horizon=7, persist=True)
 
-        self.assertIn(result["mode"], {"moving_average", "linear_regression", "prophet", "lstm"})
+        self.assertIn(result["mode"], {"moving_average", "linear_regression", "prophet", "lstm", "mixed"})
+        self.assertIn("candidate_models", result)
         self.assertEqual(ProjectForecast.objects.filter(project=self.project).count(), 7)
-        self.assertTrue(ForecastEvaluation.objects.filter(project=self.project, model_name=result["mode"]).exists())
+        model_names = set(ForecastEvaluation.objects.filter(project=self.project).values_list("model_name", flat=True))
+        self.assertIn("moving_average", model_names)
+        self.assertIn("linear_regression", model_names)
         forecast = ProjectForecast.objects.filter(project=self.project).order_by("target_time").first()
         self.assertIn("confidence", forecast.factors)
         self.assertIn("model", forecast.factors)
+        self.assertIn("candidate_models", forecast.factors)
+        self.assertIn("external_factors", forecast.factors)
 
     def test_standard_analytics_apis_and_permissions(self):
         self.client.force_login(self.visitor_user)
@@ -110,6 +119,32 @@ class AnalyticsEnterpriseRequirementTests(TestCase):
         item = response.json()["data"]["items"][0]
         self.assertEqual(item["facilities"][0]["name"], "Coaster Cafe")
         self.assertGreater(item["facilities"][0]["linked_heat"], 0)
+        self.assertIn("dimension_reasons", item)
+        self.assertIn("base", item["dimensions"])
+        self.assertIn("weather", item["metrics"]["external"])
+
+    def test_heat_score_uses_weather_and_profile_breakdown(self):
+        from analytics.services.heat import compute_project_heat_scores
+
+        today = timezone.localdate()
+        WeatherObservation.objects.create(
+            date=today,
+            weather_type=WeatherObservation.TYPE_RAIN,
+            temperature_c=18,
+            rain_mm=8,
+            humidity=88,
+            heat_multiplier=0.82,
+            description="测试降雨天气",
+        )
+
+        rows = compute_project_heat_scores(start_date=today, end_date=today)
+        row = next(item for item in rows if item["project_id"] == self.project.id)
+
+        self.assertIn("reasons", row)
+        self.assertIn("dimension_reasons", row)
+        self.assertIn("external", row["dimension_reasons"])
+        self.assertIn("weather", row["metrics"]["external"])
+        self.assertIn("user_profile_breakdown", row["metrics"])
 
 
 class VisitorRecommendationEnterpriseTests(TestCase):
@@ -149,4 +184,3 @@ class VisitorRecommendationEnterpriseTests(TestCase):
 
         self.assertEqual(route_names[0], "Family Star")
         self.assertNotIn("Closed Family", route_names)
-

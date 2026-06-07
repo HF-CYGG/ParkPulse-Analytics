@@ -11,6 +11,7 @@ from analytics.models import (
     ProjectIncident,
     ProjectReview,
     ServiceFacility,
+    WeatherObservation,
 )
 from core.auth_utils import ADMIN_GROUP, STAFF_GROUP
 from projects.models import Project
@@ -42,6 +43,7 @@ class ShowcaseSeedCommandTests(TestCase):
         self.assertGreaterEqual(ProjectIncident.objects.count(), 3)
         self.assertGreaterEqual(MaintenanceWorkOrder.objects.count(), 3)
         self.assertGreaterEqual(HolidayCalendar.objects.count(), 7)
+        self.assertGreaterEqual(WeatherObservation.objects.count(), 8)
         self.assertGreaterEqual(ItineraryPlan.objects.filter(is_active=True).count(), 3)
         self.assertGreaterEqual(VisitorFavorite.objects.filter(user=visitor).count(), 3)
         self.assertTrue(VisitorProfile.objects.filter(user=visitor, with_children=True).exists())
@@ -50,11 +52,13 @@ class ShowcaseSeedCommandTests(TestCase):
 
         project_count = Project.objects.count()
         facility_count = ServiceFacility.objects.count()
+        weather_count = WeatherObservation.objects.count()
         plan_count = ItineraryPlan.objects.count()
         call_command("seed_showcase_data", days=8, records_per_day=6)
 
         self.assertEqual(Project.objects.count(), project_count)
         self.assertEqual(ServiceFacility.objects.count(), facility_count)
+        self.assertEqual(WeatherObservation.objects.count(), weather_count)
         self.assertEqual(ItineraryPlan.objects.count(), plan_count)
 
 

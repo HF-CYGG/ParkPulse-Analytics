@@ -10,7 +10,7 @@ from analytics.forecasting.linear_regression import LinearRegressionModel
 from analytics.forecasting.moving_average import MovingAverageModel
 from analytics.forecasting.prophet_model import ProphetForecastModel
 from analytics.forecasting.lstm_model import LSTMForecastModel
-from analytics.models import ForecastEvaluation, HolidayCalendar, ProjectForecast, PromotionEvent
+from analytics.models import ForecastEvaluation, HolidayCalendar, ProjectForecast, PromotionEvent, WeatherObservation
 from analytics.services.metrics import mean_absolute_error, mean_squared_error, r2_score
 from projects.models import Project
 from records.models import PlayRecord
@@ -24,7 +24,10 @@ def run_forecast_pipeline(*, model: str = "all", days: int = 90, horizon: int = 
     for project in Project.objects.all().order_by("name"):
         visits = _daily_visits(project, start_date, today)
         queues = _daily_queues(project, start_date, today)
-        selected = _select_model(model, len(visits))
+        candidates = _model_candidates(model, len(visits))
+        evaluations = [_evaluate_candidate(project, candidate, visits, queues, start_date, today, horizon, persist) for candidate in candidates]
+        selected_eval = min(evaluations, key=lambda row: (row["mae"], row["mse"], row["model_name"])) if evaluations else None
+        selected = _instantiate_model(selected_eval["model_name"], len(visits)) if selected_eval else MovingAverageModel()
         selected.fit(visits, queues)
         predictions = selected.predict(horizon)
         modes.append(selected.name)
@@ -32,7 +35,7 @@ def run_forecast_pipeline(*, model: str = "all", days: int = 90, horizon: int = 
         avg_queue = sum(queues) / len(queues) if queues else 0.0
         for idx, (visits_value, queue_value) in enumerate(predictions):
             target_date = today + timedelta(days=idx + 1)
-            day_factor, external_reason = _external_factor(target_date)
+            day_factor, external_reason, external_factors = _external_factor(target_date)
             adjusted_visits = max(0.0, visits_value * day_factor)
             adjusted_queue = max(0.0, queue_value * day_factor)
             score = _score_from_prediction(project, adjusted_visits, adjusted_queue)
@@ -43,8 +46,10 @@ def run_forecast_pipeline(*, model: str = "all", days: int = 90, horizon: int = 
                 "confidence": _confidence_for(len(visits), selected.name),
                 "day_factor": round(day_factor, 2),
                 "external_reason": external_reason,
+                "external_factors": external_factors,
                 "avg_queue": round(avg_queue, 1),
                 "parameters": selected.parameters(),
+                "candidate_models": evaluations,
             }
             forecast_item = {
                 "date": target_date.isoformat(),
@@ -55,6 +60,7 @@ def run_forecast_pipeline(*, model: str = "all", days: int = 90, horizon: int = 
                 "alert_level": alert_level,
                 "warning": warning,
                 "confidence": factors["confidence"],
+                "external_factors": external_factors,
             }
             forecast.append(forecast_item)
             if persist:
@@ -73,13 +79,13 @@ def run_forecast_pipeline(*, model: str = "all", days: int = 90, horizon: int = 
                         "factors": factors,
                     },
                 )
-        if persist:
-            _persist_evaluation(project, selected.name, visits, start_date, today, horizon, selected.parameters())
         peak = max(forecast, key=lambda item: item["predicted_score"]) if forecast else {}
         items.append(
             {
                 "project_id": project.id,
                 "project_name": project.name,
+                "selected_model": selected.name,
+                "candidate_models": evaluations,
                 "forecast": forecast,
                 "alert": any(item["alert_level"] == ProjectForecast.ALERT_HIGH for item in forecast),
                 "warning": peak.get("warning", ""),
@@ -88,7 +94,8 @@ def run_forecast_pipeline(*, model: str = "all", days: int = 90, horizon: int = 
         )
     items.sort(key=lambda item: item["peak"].get("predicted_score", 0), reverse=True)
     mode = _mode_for_result(modes)
-    return {"mode": mode, "model": model, "generated_at": timezone.now().isoformat(), "items": items}
+    candidate_names = sorted({row["model_name"] for item in items for row in item.get("candidate_models", [])})
+    return {"mode": mode, "model": model, "candidate_models": candidate_names, "generated_at": timezone.now().isoformat(), "items": items}
 
 
 def evaluate_forecasts(*, days: int = 30, horizon: int = 7, model: str = "moving_average") -> list[dict]:
@@ -97,9 +104,9 @@ def evaluate_forecasts(*, days: int = 30, horizon: int = 7, model: str = "moving
     rows = []
     for project in Project.objects.all().order_by("name"):
         visits = _daily_visits(project, start_date, today)
-        selected = _select_model(model, len(visits))
-        row = _persist_evaluation(project, selected.name, visits, start_date, today, horizon, selected.parameters())
-        rows.append(row)
+        queues = _daily_queues(project, start_date, today)
+        for candidate in _model_candidates(model, len(visits)):
+            rows.append(_evaluate_candidate(project, candidate, visits, queues, start_date, today, horizon, persist=True))
     return rows
 
 
@@ -117,6 +124,41 @@ def _select_model(model: str, sample_size: int):
             pass
     if requested in {"linear", "linear_regression", "all"} and sample_size >= 14:
         return LinearRegressionModel()
+    return MovingAverageModel()
+
+
+def _model_candidates(model: str, sample_size: int) -> list:
+    requested = model.lower()
+    if requested == "baseline":
+        requested = "moving_average"
+    names = ["moving_average", "linear_regression", "prophet", "lstm"] if requested == "all" else [requested]
+    candidates = []
+    for name in names:
+        try:
+            candidates.append(_instantiate_model(name, sample_size))
+        except OptionalDependencyUnavailable:
+            continue
+    if not candidates:
+        candidates.append(MovingAverageModel())
+    unique = {}
+    for candidate in candidates:
+        unique[candidate.name] = candidate
+    return list(unique.values())
+
+
+def _instantiate_model(model_name: str, sample_size: int):
+    if model_name in {"moving_average", "baseline"}:
+        return MovingAverageModel()
+    if model_name in {"linear", "linear_regression"}:
+        return LinearRegressionModel() if sample_size >= 14 else MovingAverageModel()
+    if model_name == "prophet":
+        if sample_size < 30:
+            raise OptionalDependencyUnavailable("prophet requires at least 30 samples")
+        return ProphetForecastModel()
+    if model_name == "lstm":
+        if sample_size < 30:
+            raise OptionalDependencyUnavailable("lstm requires at least 30 samples")
+        return LSTMForecastModel()
     return MovingAverageModel()
 
 
@@ -164,7 +206,7 @@ def _warning_for(project: Project, target_date, score: float, visits: float, que
     return ProjectForecast.ALERT_NONE, ""
 
 
-def _external_factor(target_date) -> tuple[float, str]:
+def _external_factor(target_date) -> tuple[float, str, dict]:
     factor = 1.18 if target_date.weekday() >= 5 else 1.0
     reason = "周末" if target_date.weekday() >= 5 else ""
     holiday = HolidayCalendar.objects.filter(date=target_date).order_by("-heat_multiplier").first()
@@ -179,7 +221,20 @@ def _external_factor(target_date) -> tuple[float, str]:
     if promo:
         factor *= promo.heat_multiplier
         reason = f"{reason}+{promo.name}" if reason else promo.name
-    return factor, reason
+    weather = WeatherObservation.objects.filter(date=target_date).first()
+    weather_factor = weather.heat_multiplier if weather else 1.0
+    factor *= weather_factor
+    if weather:
+        weather_reason = weather.description or weather.get_weather_type_display()
+        reason = f"{reason}+{weather_reason}" if reason else weather_reason
+    return factor, reason, {
+        "day_type": "weekend" if target_date.weekday() >= 5 else "workday",
+        "holiday": holiday.name if holiday else "",
+        "promotion": promo.name if promo else "",
+        "weather": weather.description if weather else "",
+        "weather_factor": round(weather_factor, 2),
+        "combined_factor": round(factor, 2),
+    }
 
 
 def _persist_evaluation(project: Project, model_name: str, visits: list[float], start_date, today, horizon: int, parameters: dict) -> dict:
@@ -220,6 +275,56 @@ def _persist_evaluation(project: Project, model_name: str, visits: list[float], 
         "sample_size": evaluation.sample_size,
         "evaluated_at": timezone.localtime(evaluation.evaluated_at).strftime("%Y-%m-%d %H:%M"),
     }
+
+
+def _evaluate_candidate(project: Project, candidate, visits: list[float], queues: list[float], start_date, today, horizon: int, persist: bool) -> dict:
+    if len(visits) <= horizon + 2:
+        actual = visits[-horizon:] if visits else []
+        predicted = actual[:]
+    else:
+        train_visits = visits[:-horizon]
+        train_queues = queues[:-horizon]
+        actual = visits[-horizon:]
+        try:
+            candidate.fit(train_visits, train_queues)
+            predicted = [value[0] for value in candidate.predict(horizon)]
+        except Exception:
+            fallback = MovingAverageModel()
+            fallback.fit(train_visits, train_queues)
+            predicted = [value[0] for value in fallback.predict(horizon)]
+    mae = mean_absolute_error(actual, predicted)
+    mse = mean_squared_error(actual, predicted)
+    r2 = r2_score(actual, predicted)
+    validation_start = today - timedelta(days=max(horizon - 1, 0))
+    parameters = candidate.parameters()
+    row = {
+        "project_id": project.id,
+        "project_name": project.name,
+        "model_name": candidate.name,
+        "mae": mae,
+        "mse": mse,
+        "r2": r2,
+        "sample_size": len(visits),
+        "evaluated_at": timezone.localtime(timezone.now()).strftime("%Y-%m-%d %H:%M"),
+        "parameters": parameters,
+    }
+    if persist:
+        evaluation = ForecastEvaluation.objects.create(
+            project=project,
+            model_name=candidate.name,
+            train_start=start_date,
+            train_end=validation_start - timedelta(days=1),
+            validation_start=validation_start,
+            validation_end=today,
+            horizon_days=horizon,
+            mae=mae,
+            mse=mse,
+            r2=r2,
+            sample_size=len(visits),
+            parameters=parameters,
+        )
+        row["evaluated_at"] = timezone.localtime(evaluation.evaluated_at).strftime("%Y-%m-%d %H:%M")
+    return row
 
 
 def _confidence_for(sample_size: int, model_name: str) -> str:

@@ -92,6 +92,8 @@ class DashboardFlowTests(TestCase):
         self.assertContains(response, "data-map-x")
         self.assertContains(response, "data-map-y")
         self.assertContains(response, "spatialTimeSlider")
+        self.assertContains(response, "spatialHeatApiUrl")
+        self.assertContains(response, "六维指标")
 
     def test_predict_api_returns_dashboard_display_fields(self):
         response = self.client.get(reverse("api_predict"), {"days": 7})
@@ -158,6 +160,9 @@ class AnalyticsServiceContractTests(TestCase):
         self.assertIn("base", rows[0]["dimensions"])
         self.assertIn("time", rows[0]["dimensions"])
         self.assertIn("operations", rows[0]["dimensions"])
+        self.assertIn("reasons", rows[0])
+        self.assertIn("dimension_reasons", rows[0])
+        self.assertIn("user_profile_breakdown", rows[0]["metrics"])
         self.assertTrue(0 <= rows[0]["score"] <= 100)
 
     def test_forecast_service_returns_seven_day_rows_and_peak_warning(self):
@@ -171,3 +176,5 @@ class AnalyticsServiceContractTests(TestCase):
         self.assertEqual(len(hot_row["forecast"]), 7)
         self.assertTrue(hot_row["alert"])
         self.assertIn("warning", hot_row)
+        self.assertIn("candidate_models", hot_row)
+        self.assertIn("selected_model", hot_row)

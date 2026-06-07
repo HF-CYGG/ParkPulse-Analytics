@@ -375,6 +375,28 @@ class VisitorRecommendationServiceTests(TestCase):
         self.assertNotIn(self.closed_project.id, route_ids)
         self.assertEqual(result["avoid_peak"][0]["project_id"], self.family_project.id)
         self.assertGreaterEqual(len(result["combos"]), 1)
+        self.assertIn("profile_score", result["route"]["items"][0])
+        self.assertTrue(any(combo["name"] == "亲子轻松组合" for combo in result["combos"]))
+
+    def test_recommendations_use_age_budget_and_elderly_profile(self):
+        from analytics.services.recommendations import build_recommendations
+
+        result = build_recommendations(
+            {
+                "age_group": "senior",
+                "preference_tags": "view,low_queue",
+                "budget_level": "low",
+                "budget_amount": 80,
+                "available_minutes": 70,
+                "with_children": False,
+                "with_elderly": True,
+            }
+        )
+
+        self.assertLessEqual(len(result["route"]["items"]), 2)
+        self.assertTrue(result["combos"])
+        self.assertTrue(any("长者" in combo["name"] or "休闲" in combo["name"] for combo in result["combos"]))
+        self.assertIn("budget_score", result["avoid_peak"][0])
 
 
 class VisitorProjectDetailRecommendationTests(TestCase):

@@ -256,3 +256,34 @@ class PromotionEvent(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class WeatherObservation(models.Model):
+    TYPE_CLEAR = "clear"
+    TYPE_CLOUDY = "cloudy"
+    TYPE_RAIN = "rain"
+    TYPE_HEAT = "heat"
+    TYPE_WIND = "wind"
+    TYPE_CHOICES = [
+        (TYPE_CLEAR, "晴朗"),
+        (TYPE_CLOUDY, "多云"),
+        (TYPE_RAIN, "降雨"),
+        (TYPE_HEAT, "高温"),
+        (TYPE_WIND, "大风"),
+    ]
+
+    date = models.DateField("日期", unique=True)
+    weather_type = models.CharField("天气类型", max_length=20, choices=TYPE_CHOICES, default=TYPE_CLEAR)
+    temperature_c = models.FloatField("温度(℃)", default=24)
+    rain_mm = models.FloatField("降雨量(mm)", default=0)
+    humidity = models.FloatField("湿度(%)", default=55)
+    heat_multiplier = models.FloatField("热度系数", default=1.0)
+    description = models.CharField("说明", max_length=160, blank=True, default="")
+
+    class Meta:
+        verbose_name = "天气观测"
+        verbose_name_plural = "天气观测"
+        ordering = ["date"]
+
+    def __str__(self):
+        return f"{self.date} {self.get_weather_type_display()} x{self.heat_multiplier:.2f}"

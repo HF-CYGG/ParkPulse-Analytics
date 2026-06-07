@@ -10,6 +10,7 @@ from .models import (
     ProjectReview,
     PromotionEvent,
     ServiceFacility,
+    WeatherObservation,
 )
 
 
@@ -74,3 +75,10 @@ class PromotionEventAdmin(admin.ModelAdmin):
     list_display = ("name", "start_date", "end_date", "heat_multiplier", "is_active")
     list_filter = ("is_active", "start_date", "end_date")
     search_fields = ("name", "description")
+
+
+@admin.register(WeatherObservation)
+class WeatherObservationAdmin(admin.ModelAdmin):
+    list_display = ("date", "weather_type", "temperature_c", "rain_mm", "humidity", "heat_multiplier")
+    list_filter = ("weather_type", "date")
+    search_fields = ("description",)

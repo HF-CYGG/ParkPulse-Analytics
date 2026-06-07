@@ -11,7 +11,7 @@ def build_forecast_rows(*, days: int = 30, horizon: int = 7, model_name: str = "
 
 
 def evaluate_baseline_forecasts(*, days: int = 30, horizon: int = 7) -> list[dict]:
-    rows = evaluate_forecasts(days=days, horizon=horizon, model="moving_average")
+    rows = evaluate_forecasts(days=days, horizon=horizon, model="all")
     if rows:
         return rows
     return [

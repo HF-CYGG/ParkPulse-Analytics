@@ -16,6 +16,7 @@ from analytics.models import (
     ProjectReview,
     PromotionEvent,
     ServiceFacility,
+    WeatherObservation,
 )
 from core.auth_utils import ADMIN_GROUP, STAFF_GROUP
 from projects.models import Project
@@ -43,6 +44,8 @@ class Command(BaseCommand):
         self._seed_visitor_profile(visitor)
         self._seed_service_facilities()
         self._seed_external_calendar()
+        self._seed_weather(days)
+        self._seed_demo_profiles()
         self._seed_reviews(visitor, projects)
         self._seed_incidents_and_work_orders(staff, projects)
         self._seed_visitor_engagement(visitor, projects)
@@ -216,6 +219,76 @@ class Command(BaseCommand):
                 "is_active": True,
             },
         )
+
+    def _seed_weather(self, days):
+        today = timezone.localdate()
+        for offset in range(days - 1, -8, -1):
+            target = today - timedelta(days=offset)
+            mod = abs(offset) % 10
+            if mod in {0, 1}:
+                weather_type = WeatherObservation.TYPE_RAIN
+                temp = 21
+                rain = 6.5
+                humidity = 86
+                multiplier = 0.86
+                desc = "小雨，室外刺激项目热度下降"
+            elif mod == 5:
+                weather_type = WeatherObservation.TYPE_HEAT
+                temp = 34
+                rain = 0
+                humidity = 62
+                multiplier = 0.94
+                desc = "高温，亲水与室内项目热度提升"
+            elif mod == 7:
+                weather_type = WeatherObservation.TYPE_CLOUDY
+                temp = 26
+                rain = 0
+                humidity = 58
+                multiplier = 1.05
+                desc = "多云舒适，整体游园意愿提升"
+            else:
+                weather_type = WeatherObservation.TYPE_CLEAR
+                temp = 27
+                rain = 0
+                humidity = 52
+                multiplier = 1.0
+                desc = "晴朗，按常规热度处理"
+            WeatherObservation.objects.update_or_create(
+                date=target,
+                defaults={
+                    "weather_type": weather_type,
+                    "temperature_c": temp,
+                    "rain_mm": rain,
+                    "humidity": humidity,
+                    "heat_multiplier": multiplier,
+                    "description": desc,
+                },
+            )
+
+    def _seed_demo_profiles(self):
+        User = get_user_model()
+        rows = [
+            ("demo_family_low_budget", "亲子低预算", "亲子,低排队", VisitorProfile.AGE_FAMILY, VisitorProfile.CONSUMPTION_LOW, 180, 120, True, False),
+            ("demo_senior_view", "长者观光", "观光,休闲", VisitorProfile.AGE_SENIOR, VisitorProfile.CONSUMPTION_MEDIUM, 150, 180, False, True),
+            ("demo_thrill_high", "刺激玩家", "刺激,热门", VisitorProfile.AGE_ADULT, VisitorProfile.CONSUMPTION_HIGH, 240, 420, False, False),
+        ]
+        for username, nickname, tags, age, consumption, minutes, budget, children, elderly in rows:
+            user, _ = User.objects.get_or_create(username=username, defaults={"email": f"{username}@parkpulse.local"})
+            user.set_password(os.environ.get("DEMO_VISITOR_PASSWORD", "Visitor@2026!"))
+            user.save(update_fields=["password"])
+            VisitorProfile.objects.update_or_create(
+                user=user,
+                defaults={
+                    "nickname": nickname,
+                    "preference_tags": tags,
+                    "age_group": age,
+                    "consumption_level": consumption,
+                    "available_minutes": minutes,
+                    "budget_amount": budget,
+                    "with_children": children,
+                    "with_elderly": elderly,
+                },
+            )
 
     def _seed_reviews(self, visitor, projects):
         comments = ["体验顺畅，适合推荐。", "排队可接受，现场引导清晰。", "项目热度高，建议错峰游玩。"]

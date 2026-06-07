@@ -210,13 +210,21 @@
       }
       const spatial = readJson("spatial-heat-items", []);
       const detail = document.getElementById("spatialHeatDetail");
+      function dimensionSummary(item) {
+        const dimensions = item.dimensions || {};
+        const labels = { base: "基础", time: "时间", user: "用户", operations: "运营", external: "外部", subjective: "主观" };
+        return Object.keys(labels).map(function (key) {
+          return "<span class=\"badge text-bg-light border me-1 mb-1\">" + labels[key] + " " + (dimensions[key] ?? "-") + "</span>";
+        }).join("");
+      }
       document.querySelectorAll("#spatialHeatList [data-project-id]").forEach(function (button) {
         button.addEventListener("click", function () {
           const id = parseInt(button.getAttribute("data-project-id") || "0", 10);
           const item = spatial.find(function (row) { return row.project_id === id; });
           if (!item || !detail) return;
-          const linked = (item.linked_heat || []).map(function (row) { return escapeHtml(row.target) + " " + row.score + " 分"; }).join("；") || "暂无明显连带热度";
-          detail.innerHTML = "<strong>" + escapeHtml(item.project_name) + "</strong>：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + linked;
+          const metrics = item.metrics || {};
+          const linked = (item.facilities || []).map(function (row) { return escapeHtml(row.name) + " " + row.linked_heat + " 分"; }).join("；") || "暂无明显连带热度";
+          detail.innerHTML = "<strong>" + escapeHtml(item.project_name) + "</strong>：热度 " + item.score + "，辐射半径 " + item.radius + " 米。<div class=\"mt-2\">" + dimensionSummary(item) + "</div><div class=\"mt-2 small\">平均排队 " + (metrics.avg_queue ?? 0) + " 分钟，维护影响 " + (metrics.downtime_minutes ?? 0) + " 分钟，投诉率 " + (metrics.complaint_rate ?? 0) + "%。</div><div class=\"mt-2 small\">周边设施：" + linked + "</div>";
         });
       });
       const refreshEvaluationButton = document.getElementById("refreshEvaluationButton");

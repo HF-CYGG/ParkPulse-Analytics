@@ -83,7 +83,8 @@ def forecast_evaluation_api(request):
 @staff_or_admin_required
 def spatial_heat_api(request):
     days = _parse_int(request.GET.get("days"), default=7, min_value=1, max_value=180)
-    return api_response(build_spatial_heat_payload(days=days))
+    offset = _parse_int(request.GET.get("offset"), default=0, min_value=0, max_value=30)
+    return api_response(build_spatial_heat_payload(days=days, offset=offset))
 
 
 @staff_or_admin_required

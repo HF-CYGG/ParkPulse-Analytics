@@ -6,52 +6,23 @@
   <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
     <div>
       <h1 class="h3 fw-bold mb-1">空间热度辐射</h1>
-      <div class="text-muted small">项目热度圆、周边设施连带热度和区域辐射范围。</div>
+      <div class="text-muted small">项目热度圆、周边设施连带热度、六维指标和高峰预警联动。</div>
     </div>
     <a class="btn btn-outline-primary btn-sm" href="{% url 'index' %}">返回看板</a>
   </div>
 
+  <div id="spatialHeatApiUrl" data-url="{% url 'analytics:heat_spatial_api' %}" hidden></div>
   <div class="row g-3">
     <div class="col-lg-7">
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <h2 class="h5 fw-bold mb-0">项目热度圆</h2>
-            <label class="small text-muted mb-0" for="spatialTimeSlider">时间轴 <span id="spatialTimeLabel">当前</span></label>
+            <label class="small text-muted mb-0" for="spatialTimeSlider">时间轴 <span id="spatialTimeLabel">{{ payload.target_date|default:"当前" }}</span></label>
           </div>
           <input class="form-range" id="spatialTimeSlider" type="range" min="0" max="6" step="1" value="0">
-          <div id="spatialHeatCanvas" class="spatial-map-viewport position-relative border rounded-3 mb-3">
-            {% for item in payload.items %}
-              <button
-                class="position-absolute border-0 rounded-circle text-white spatial-map-node"
-                type="button"
-                data-project-id="{{ item.project_id }}"
-                data-map-x="{{ item.map_x_pct }}"
-                data-map-y="{{ item.map_y_pct }}"
-                data-radius="{{ item.radius }}"
-                style="left: {{ item.map_x_pct }}%; top: {{ item.map_y_pct }}%; width: {{ item.diameter_px }}px; height: {{ item.diameter_px }}px;"
-              >
-                {{ item.score }}
-              </button>
-              {% for facility in item.facilities %}
-                <span
-                  class="position-absolute rounded-circle spatial-facility-node"
-                  title="{{ facility.name }}"
-                  style="left: {{ facility.map_x_pct }}%; top: {{ facility.map_y_pct }}%;"
-                ></span>
-              {% endfor %}
-            {% endfor %}
-          </div>
-          <div class="list-group" id="spatialHeatDataList">
-            {% for item in payload.items %}
-              <button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" type="button" data-project-id="{{ item.project_id }}">
-                <span>{{ item.project_name }}</span>
-                <span class="badge text-bg-primary">{{ item.score }}</span>
-              </button>
-            {% empty %}
-              <div class="text-muted small">暂无热度数据。</div>
-            {% endfor %}
-          </div>
+          <div id="spatialHeatCanvas" class="spatial-map-viewport position-relative border rounded-3 mb-3"></div>
+          <div class="list-group" id="spatialHeatDataList"></div>
         </div>
       </div>
     </div>
@@ -59,7 +30,7 @@
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <h2 class="h5 fw-bold mb-3">项目热度详情</h2>
-          <div id="spatialHeatDetail" class="small text-muted">点击左侧项目查看辐射范围和周边设施。</div>
+          <div id="spatialHeatDetail" class="small text-muted">点击左侧项目查看辐射范围、六维指标、运维影响、外部因素和周边设施。</div>
         </div>
       </div>
     </div>
@@ -68,26 +39,95 @@
   {{ payload.items|json_script:"spatialHeatData" }}
   <script>
     (function () {
-      const data = JSON.parse(document.getElementById("spatialHeatData").textContent || "[]");
+      let data = JSON.parse(document.getElementById("spatialHeatData").textContent || "[]");
+      const apiNode = document.getElementById("spatialHeatApiUrl");
+      const apiUrl = apiNode ? apiNode.dataset.url : "/analytics/api/heat/spatial/";
+      const canvas = document.getElementById("spatialHeatCanvas");
+      const list = document.getElementById("spatialHeatDataList");
       const detail = document.getElementById("spatialHeatDetail");
       const label = document.getElementById("spatialTimeLabel");
       const slider = document.getElementById("spatialTimeSlider");
-      if (slider && label) {
-        slider.addEventListener("input", function () {
-          label.textContent = "第 " + (Number(slider.value) + 1) + " 天";
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+          return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[ch];
         });
       }
-      document.querySelectorAll("#spatialHeatDataList [data-project-id], .spatial-map-node").forEach(function (button) {
-        button.addEventListener("click", function () {
-          const id = Number(button.dataset.projectId);
-          const item = data.find(function (row) { return row.project_id === id; });
-          if (!item) return;
+
+      function render() {
+        if (!canvas || !list) return;
+        canvas.innerHTML = data.map(function (item) {
           const facilities = (item.facilities || []).map(function (facility) {
-            return facility.name + " " + facility.linked_heat + "分";
-          }).join("；") || "暂无周边设施连带热度";
-          detail.textContent = item.project_name + "：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + facilities;
+            return '<span class="position-absolute rounded-circle spatial-facility-node" title="' + escapeHtml(facility.name) + '" style="left:' + facility.map_x_pct + '%;top:' + facility.map_y_pct + '%;"></span>';
+          }).join("");
+          return '<button class="position-absolute border-0 rounded-circle text-white spatial-map-node" type="button" data-project-id="' + item.project_id + '" data-map-x="' + item.map_x_pct + '" data-map-y="' + item.map_y_pct + '" data-radius="' + item.radius + '" style="left:' + item.map_x_pct + '%;top:' + item.map_y_pct + '%;width:' + item.diameter_px + 'px;height:' + item.diameter_px + 'px;">' + item.score + '</button>' + facilities;
+        }).join("");
+        list.innerHTML = data.length ? data.map(function (item) {
+          return '<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" type="button" data-project-id="' + item.project_id + '"><span>' + escapeHtml(item.project_name) + '</span><span class="badge text-bg-primary">' + item.score + '</span></button>';
+        }).join("") : '<div class="text-muted small">暂无热度数据。</div>';
+        bindClicks();
+      }
+
+      function dimensionRows(item) {
+        const dimensions = item.dimensions || {};
+        const reasons = item.dimension_reasons || {};
+        const names = { base: "基础", time: "时间", user: "用户", operations: "运营", external: "外部", subjective: "主观" };
+        return Object.keys(names).map(function (key) {
+          return '<tr><td>' + names[key] + '</td><td>' + (dimensions[key] ?? "-") + '</td><td>' + escapeHtml(reasons[key] || "") + '</td></tr>';
+        }).join("");
+      }
+
+      function renderDetail(item) {
+        if (!detail || !item) return;
+        const metrics = item.metrics || {};
+        const external = metrics.external || {};
+        const alert = item.forecast_alert || {};
+        const facilities = (item.facilities || []).map(function (facility) {
+          return '<span class="badge text-bg-light border me-1 mb-1">' + escapeHtml(facility.name) + ' ' + facility.linked_heat + '分</span>';
+        }).join("") || '<span class="text-muted">暂无明显周边设施连带热度</span>';
+        const reasons = (item.reasons || []).map(function (reason) {
+          return '<li>' + escapeHtml(reason) + '</li>';
+        }).join("");
+        detail.innerHTML =
+          '<div class="fw-semibold mb-2">' + escapeHtml(item.project_name) + '：热度 ' + item.score + '，辐射半径 ' + item.radius + ' 米</div>' +
+          '<div class="mb-2"><span class="badge text-bg-secondary">预警 ' + escapeHtml(alert.level || "none") + '</span> <span>' + escapeHtml(alert.warning || "暂无高峰预警") + '</span></div>' +
+          '<div class="table-responsive mb-2"><table class="table table-sm mb-0"><thead><tr><th>六维指标</th><th>分值</th><th>原因</th></tr></thead><tbody>' + dimensionRows(item) + '</tbody></table></div>' +
+          '<div class="mb-2">关键指标：游玩 ' + (metrics.visits ?? 0) + ' 人次，平均排队 ' + (metrics.avg_queue ?? 0) + ' 分钟，重复游玩率 ' + (metrics.repeat_rate ?? 0) + '%，维护影响 ' + (metrics.downtime_minutes ?? 0) + ' 分钟，投诉率 ' + (metrics.complaint_rate ?? 0) + '%。</div>' +
+          '<div class="mb-2">外部因素：' + escapeHtml((external.weather || {}).description || external.reason || "常规天气") + '</div>' +
+          '<div class="mb-2">周边设施：' + facilities + '</div>' +
+          (reasons ? '<ul class="mb-0 ps-3">' + reasons + '</ul>' : '');
+      }
+
+      function bindClicks() {
+        document.querySelectorAll("#spatialHeatDataList [data-project-id], .spatial-map-node").forEach(function (button) {
+          button.addEventListener("click", function () {
+            const id = Number(button.dataset.projectId);
+            renderDetail(data.find(function (row) { return row.project_id === id; }));
+          });
         });
-      });
+      }
+
+      function loadOffset(offset) {
+        if (label) label.textContent = offset === 0 ? "当前" : "近 " + (offset + 1) + " 天";
+        fetch(apiUrl + "?days=7&offset=" + encodeURIComponent(offset), { headers: { "X-Requested-With": "XMLHttpRequest" } })
+          .then(function (response) { return response.ok ? response.json() : Promise.reject(response); })
+          .then(function (payload) {
+            const body = (payload || {}).data || {};
+            data = body.items || [];
+            if (label && body.target_date) label.textContent = body.target_date;
+            render();
+            if (data.length) renderDetail(data[0]);
+          })
+          .catch(function () {
+            if (detail) detail.innerHTML = '<span class="text-danger">空间热度刷新失败，请稍后重试。</span>';
+          });
+      }
+
+      if (slider) {
+        slider.addEventListener("input", function () { loadOffset(Number(slider.value || 0)); });
+      }
+      render();
+      if (data.length) renderDetail(data[0]);
     })();
   </script>
 {% endblock %}
