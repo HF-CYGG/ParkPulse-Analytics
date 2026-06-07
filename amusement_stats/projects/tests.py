@@ -75,13 +75,15 @@ class ProjectManagementFlowTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.status, Project.STATUS_MAINTENANCE)
 
-    def test_project_edit_page_uses_offline_map_surface(self):
-        """项目编辑页地图不应依赖在线底图，离线环境也应能正常选点。"""
+    def test_project_edit_page_uses_shared_leaflet_tile_map(self):
+        """项目编辑页地图应与游客端园区地图统一使用 Leaflet 在线瓦片和图层切换。"""
 
         response = self.client.get(reverse("project_edit", args=[self.project.id]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, "webrd0{s}.is.autonavi.com")
-        self.assertNotContains(response, "tileLayer")
-        self.assertContains(response, "project-map-offline-base")
-        self.assertContains(response, "若当前网络无法访问在线底图，仍可在离线底板上选点")
+        self.assertContains(response, "webrd0{s}.is.autonavi.com")
+        self.assertContains(response, "OpenStreetMap")
+        self.assertContains(response, "L.tileLayer")
+        self.assertContains(response, "L.control.layers")
+        self.assertNotContains(response, "project-map-offline-base")
+        self.assertNotContains(response, "离线园区示意底图")

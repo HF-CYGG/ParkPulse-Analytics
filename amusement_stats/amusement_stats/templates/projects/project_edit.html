@@ -79,7 +79,7 @@
           <div class="border rounded-3 p-3 bg-light bg-opacity-50">
             <div class="fw-semibold mb-1">地图选点（推荐）</div>
             <p class="small text-muted mb-2 mb-md-3">
-              拖动红色标记或点击地图即可写入上方经纬度；坐标为 WGS84。若当前网络无法访问在线底图，仍可在离线底板上选点。
+              拖动蓝色标记或点击地图即可写入上方经纬度；坐标为 WGS84。右上角可切换高德中文路网与 OpenStreetMap，与游客端园区地图保持一致。
             </p>
             <div
               id="project-edit-map"
@@ -88,20 +88,7 @@
               data-init-lng="{{ map_init_lng }}"
               data-default-lat="{{ map_default_lat }}"
               data-default-lng="{{ map_default_lng }}"
-            >
-              <div class="project-map-offline-base" aria-hidden="true">
-                <span class="project-map-zone zone-entrance">入口区</span>
-                <span class="project-map-zone zone-family">亲子区</span>
-                <span class="project-map-zone zone-thrill">刺激区</span>
-                <span class="project-map-zone zone-view">观光区</span>
-                <span class="project-map-zone zone-rest">休闲区</span>
-                <span class="project-map-zone zone-catering">餐饮配套</span>
-                <span class="project-map-path path-main"></span>
-                <span class="project-map-path path-loop"></span>
-                <span class="project-map-river"></span>
-                <span class="project-map-caption">离线园区示意底图</span>
-              </div>
-            </div>
+            ></div>
             <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
               <button type="button" class="btn btn-sm btn-outline-secondary" id="project-map-use-region">
                 使用当前「所属区域」参考位置
@@ -186,6 +173,26 @@
 
       try {
         var map = L.map("project-edit-map", { scrollWheelZoom: true }).setView([ilat, ilng], 16);
+        var gaodeTiles =
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}";
+        var gaodeLayer = L.tileLayer(gaodeTiles, {
+          attribution: '© <a href="https://ditu.amap.com/" target="_blank">高德地图</a>',
+          maxZoom: 19,
+          subdomains: "1234",
+        });
+        var osmLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        });
+        osmLayer.addTo(map);
+        L.control.layers(
+          {
+            "高德路网（中文标注）": gaodeLayer,
+            "OpenStreetMap（英文标注）": osmLayer,
+          },
+          null,
+          { collapsed: false, position: "topright" }
+        ).addTo(map);
         setTimeout(function () {
           map.invalidateSize();
         }, 200);
@@ -232,9 +239,9 @@
           });
         }
 
-        logMapDebug(["状态: 已初始化", "模式: 离线底板", "默认中心: " + [ilat, ilng].join(", ")], false);
+        logMapDebug(["状态: 已初始化", "模式: 在线瓦片地图", "默认中心: " + [ilat, ilng].join(", ")], false);
       } catch (error) {
-        logMapDebug(["状态: 初始化失败", "模式: 离线底板", "错误: " + (error && error.message ? error.message : String(error))], true);
+        logMapDebug(["状态: 初始化失败", "模式: 在线瓦片地图", "错误: " + (error && error.message ? error.message : String(error))], true);
       }
     })();
   </script>
