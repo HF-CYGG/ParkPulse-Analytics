@@ -344,7 +344,14 @@ async function refreshPredictByApi() {
       badgeEl.classList.add("text-bg-danger");
       badgeEl.textContent = `预警 ${alertRows.length} 项`;
       boxEl.classList.remove("d-none");
-      boxEl.innerHTML = alertRows.map((a) => `<div>【${escapeHtml(a.name)}】预测次日客流 ${escapeHtml(a.predicted_next_day)}，超过阈值 ${escapeHtml(a.threshold)}</div>`).join("");
+      boxEl.innerHTML = alertRows
+        .map((a) => {
+          const name = a.name || a.project_name || "";
+          const peakValue = a.predicted_best ?? a.peak?.predicted_visits ?? a.predicted_next_day ?? "";
+          const message = a.warning || `预测峰值客流 ${peakValue}，超过阈值 ${a.threshold ?? ""}`;
+          return `<div>【${escapeHtml(name)}】${escapeHtml(message)}</div>`;
+        })
+        .join("");
     } else {
       badgeEl.classList.remove("text-bg-danger");
       badgeEl.classList.add("text-bg-success");
@@ -361,8 +368,13 @@ async function refreshPredictByApi() {
 
     tbodyEl.innerHTML = topRows
       .map((r) => {
+        const name = r.name || r.project_name || "";
+        const nextDay = r.predicted_next_day ?? r.forecast?.[0]?.predicted_visits ?? "";
+        const peakValue = r.predicted_lr ?? r.predicted_best ?? r.peak?.predicted_visits ?? "";
+        const threshold = r.threshold ?? "";
+        const capacityRiskThreshold = r.capacity_risk_threshold ?? "";
         const statusBadge = r.is_alert ? '<span class="badge text-bg-danger">预警</span>' : '<span class="badge text-bg-success">正常</span>';
-        return `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.predicted_next_day)}</td><td>${escapeHtml(r.predicted_lr)}</td><td>${escapeHtml(r.threshold)} / ${escapeHtml(r.capacity_risk_threshold)}</td><td>${statusBadge}</td></tr>`;
+        return `<tr><td>${escapeHtml(name)}</td><td>${escapeHtml(nextDay)}</td><td>${escapeHtml(peakValue)}</td><td>${escapeHtml(threshold)} / ${escapeHtml(capacityRiskThreshold)}</td><td>${statusBadge}</td></tr>`;
       })
       .join("");
   } catch (e) {

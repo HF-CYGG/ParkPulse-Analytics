@@ -820,18 +820,50 @@ def api_predict(request):
         history_days = int(request.GET.get("days", 30))
         history_days = max(7, min(history_days, 365))
         forecast = build_forecast_rows(days=history_days, horizon=7)
+        prediction_rows = _dashboard_prediction_rows_from_forecast(forecast["items"])
         return _api_resp(
             code=0,
             message="ok",
             data={
                 "history_days": history_days,
                 "mode": forecast["mode"],
-                "prediction_rows": forecast["items"][:10],
-                "alert_rows": [item for item in forecast["items"] if item["alert"]],
+                "prediction_rows": prediction_rows[:10],
+                "alert_rows": [item for item in prediction_rows if item["is_alert"]],
             },
         )
     except Exception as e:
         return _api_resp(code=1, message=str(e), data={})
+
+
+def _dashboard_prediction_rows_from_forecast(items):
+    project_map = Project.objects.in_bulk([item["project_id"] for item in items])
+    rows = []
+    for item in items:
+        project = project_map.get(item["project_id"])
+        first_day = (item.get("forecast") or [{}])[0]
+        peak = item.get("peak") or first_day
+        threshold = project.daily_warn_threshold if project else 0
+        capacity_risk_threshold = project.capacity * 12 if project else 0
+        predicted_next_day = first_day.get("predicted_visits", 0)
+        predicted_peak = peak.get("predicted_visits", predicted_next_day)
+        warning = item.get("warning") or peak.get("warning") or ""
+        rows.append(
+            {
+                "project_id": item.get("project_id"),
+                "name": item.get("project_name", ""),
+                "predicted_next_day": predicted_next_day,
+                "predicted_lr": predicted_peak,
+                "predicted_best": max(predicted_next_day, predicted_peak),
+                "threshold": threshold,
+                "capacity_risk_threshold": capacity_risk_threshold,
+                "is_alert": bool(item.get("alert")),
+                "warning": warning,
+                "forecast": item.get("forecast", []),
+                "peak": peak,
+            }
+        )
+    rows.sort(key=lambda row: row["predicted_best"], reverse=True)
+    return rows
 
 
 @staff_or_admin_required

@@ -75,6 +75,22 @@ class DashboardFlowTests(TestCase):
         self.assertContains(response, "spatialHeatCanvas")
         self.assertContains(response, "spatialTimeSlider")
 
+    def test_predict_api_returns_dashboard_display_fields(self):
+        response = self.client.get(reverse("api_predict"), {"days": 7})
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()["data"]
+        self.assertGreaterEqual(len(payload["prediction_rows"]), 1)
+        row = payload["prediction_rows"][0]
+        self.assertEqual(row["name"], self.project.name)
+        self.assertIn("predicted_next_day", row)
+        self.assertIn("predicted_lr", row)
+        self.assertEqual(row["threshold"], self.project.daily_warn_threshold)
+        self.assertIn("capacity_risk_threshold", row)
+        self.assertIn("is_alert", row)
+        if payload["alert_rows"]:
+            self.assertNotEqual(payload["alert_rows"][0]["name"], "")
+
 
 class AnalyticsServiceContractTests(TestCase):
     def setUp(self):
