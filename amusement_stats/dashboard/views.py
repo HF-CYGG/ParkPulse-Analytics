@@ -137,8 +137,7 @@ def _linear_regression_next(series):
     return max(0.0, float(y_next))
 
 
-@staff_or_admin_required
-def index(request):
+def build_analysis_dashboard_context(request):
     """运营看板首页，展示核心指标和图表数据。"""
     today = timezone.localdate()
     start_date_str = request.GET.get("start_date", "")
@@ -257,47 +256,7 @@ def index(request):
     score_labels = [row["name"] for row in score_rows[:8]]
     score_values = [row["score"] for row in score_rows[:8]]
 
-    # 简易预测：最近 7 天，3 日均值 + 线性回归。
-    prediction_rows = []
-    for project in Project.objects.all():
-        series = []
-        for i in range(6, -1, -1):
-            d = today - timedelta(days=i)
-            c = PlayRecord.objects.filter(project=project, play_time__date=d).count()
-            series.append(c)
-        predicted_ma = round(sum(series[-3:]) / 3, 1) if series else 0
-        predicted_lr = round(_linear_regression_next(series), 1) if series else 0
-        predicted_best = max(predicted_ma, predicted_lr)
-        capacity_risk_threshold = project.capacity * 12
-        is_alert = predicted_best >= project.daily_warn_threshold or predicted_best >= capacity_risk_threshold
-        prediction_rows.append(
-            {
-                "name": project.name,
-                "predicted_next_day": predicted_ma,
-                "predicted_lr": predicted_lr,
-                "predicted_best": predicted_best,
-                "threshold": project.daily_warn_threshold,
-                "capacity_risk_threshold": capacity_risk_threshold,
-                "is_alert": is_alert,
-            }
-        )
-    prediction_rows.sort(key=lambda x: x["predicted_next_day"], reverse=True)
-    alert_rows = [row for row in prediction_rows if row["is_alert"]]
-    forecast_payload = build_forecast_rows(days=30, horizon=7)
-    forecast_items = forecast_payload["items"][:10]
-    forecast_alerts = [item for item in forecast_payload["items"] if item["alert"]]
-    spatial_heat_items = build_spatial_heat_payload(days=7)["items"][:10]
-    evaluation_rows = [
-        {
-            "project_name": item.project.name,
-            "model_name": item.model_name,
-            "mae": item.mae,
-            "mse": item.mse,
-            "r2": item.r2,
-            "sample_size": item.sample_size,
-        }
-        for item in ForecastEvaluation.objects.select_related("project").order_by("-evaluated_at")[:10]
-    ]
+    spatial_heat_items = build_spatial_heat_payload(days=7)["items"][:5]
 
     hourly_counts = (
         PlayRecord.objects.filter(play_time__gte=day_start, play_time__lt=day_end)
@@ -489,10 +448,7 @@ def index(request):
 
     request.session["queue_alert_logged_keys"] = sorted(alerted_keys)
 
-    return render(
-        request,
-        "dashboard/index.html",
-        {
+    return {
             "metrics": {
                 "total_visits": total_visits,
                 "avg_queue": round(avg_queue, 1),
@@ -522,13 +478,7 @@ def index(request):
             "spark_labels": spark_labels,
             "spark_visits": spark_visits,
             "spark_queue": spark_queue,
-            "prediction_rows": prediction_rows[:10],
-            "alert_rows": alert_rows,
-            "forecast_mode": forecast_payload["mode"],
-            "forecast_items": forecast_items,
-            "forecast_alerts": forecast_alerts,
             "spatial_heat_items": spatial_heat_items,
-            "evaluation_rows": evaluation_rows,
             "type_ratio_data": type_ratio_data,
             "turnover_labels": turnover_labels,
             "turnover_values": turnover_values,
@@ -539,8 +489,55 @@ def index(request):
             "region_heatmap_max": region_heatmap_max,
             "decay_rows": decay_rows,
             "queue_alert_rows": queue_alert_rows,
+        }
+
+
+@staff_or_admin_required
+def index(request):
+    """数据分析看板首页，只展示经营统计和分析类指标。"""
+    return render(request, "dashboard/index.html", build_analysis_dashboard_context(request))
+
+
+def build_forecast_dashboard_context(request):
+    """模型预测中心上下文，集中展示未来预测、预警和模型评估。"""
+    forecast_payload = build_forecast_rows(days=30, horizon=7)
+    prediction_rows = _dashboard_prediction_rows_from_forecast(forecast_payload["items"])
+    forecast_items = forecast_payload["items"][:10]
+    forecast_alerts = [item for item in prediction_rows if item["is_alert"]]
+    peak_row = prediction_rows[0] if prediction_rows else {}
+    evaluation_rows = [
+        {
+            "project_name": item.project.name,
+            "model_name": item.model_name,
+            "mae": item.mae,
+            "mse": item.mse,
+            "r2": item.r2,
+            "sample_size": item.sample_size,
+        }
+        for item in ForecastEvaluation.objects.select_related("project").order_by("-evaluated_at")[:10]
+    ]
+    spatial_heat_items = build_spatial_heat_payload(days=7)["items"][:8]
+    return {
+        "forecast_mode": forecast_payload["mode"],
+        "forecast_items": forecast_items,
+        "forecast_alerts": forecast_alerts,
+        "prediction_rows": prediction_rows[:10],
+        "alert_rows": forecast_alerts,
+        "peak_row": peak_row,
+        "evaluation_rows": evaluation_rows,
+        "spatial_heat_items": spatial_heat_items,
+        "evaluation_summary": {
+            "count": len(evaluation_rows),
+            "best_r2": max([row["r2"] for row in evaluation_rows], default=None),
+            "avg_mae": round(sum(row["mae"] for row in evaluation_rows) / len(evaluation_rows), 2) if evaluation_rows else None,
         },
-    )
+    }
+
+
+@staff_or_admin_required
+def forecast_dashboard(request):
+    """模型预测中心页面。"""
+    return render(request, "dashboard/forecast.html", build_forecast_dashboard_context(request))
 
 
 @staff_or_admin_required

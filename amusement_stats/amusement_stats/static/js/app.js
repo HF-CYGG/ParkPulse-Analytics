@@ -321,6 +321,28 @@ function initSidebarToggle() {
   }
 }
 
+function initProjectCompare() {
+  const compareBody = document.getElementById("projectCompareBody");
+  const compareChecks = Array.from(document.querySelectorAll(".project-compare-check"));
+  if (!compareBody || !compareChecks.length) return;
+
+  const renderCompare = () => {
+    const checked = compareChecks.filter((box) => box.checked).slice(0, 3);
+    compareChecks.forEach((box) => {
+      box.disabled = !box.checked && checked.length >= 3;
+    });
+    compareBody.innerHTML =
+      checked
+        .map((box) => {
+          return `<tr><td>${escapeHtml(box.value)}</td><td>${escapeHtml(box.dataset.score)}</td><td>${escapeHtml(box.dataset.queue)} 分钟</td><td>${escapeHtml(box.dataset.repeat)}%</td><td>${escapeHtml(box.dataset.abnormal)} 分钟</td></tr>`;
+        })
+        .join("") || '<tr><td colspan="5" class="text-center text-muted">请选择 2-3 个项目进行对比。</td></tr>';
+  };
+
+  compareChecks.forEach((box) => box.addEventListener("change", renderCompare));
+  renderCompare();
+}
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return "";
   return String(str).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
@@ -343,12 +365,15 @@ async function refreshPredictByApi() {
       badgeEl.classList.remove("text-bg-success");
       badgeEl.classList.add("text-bg-danger");
       badgeEl.textContent = `预警 ${alertRows.length} 项`;
-      boxEl.classList.remove("d-none");
+      boxEl.classList.remove("d-none", "is-empty");
       boxEl.innerHTML = alertRows
         .map((a) => {
           const name = a.name || a.project_name || "";
           const peakValue = a.predicted_best ?? a.peak?.predicted_visits ?? a.predicted_next_day ?? "";
           const message = a.warning || `预测峰值客流 ${peakValue}，超过阈值 ${a.threshold ?? ""}`;
+          if (boxEl.classList.contains("forecast-alert-list")) {
+            return `<div class="forecast-alert-item"><strong>【${escapeHtml(name)}】</strong><span>${escapeHtml(message)}</span></div>`;
+          }
           return `<div>【${escapeHtml(name)}】${escapeHtml(message)}</div>`;
         })
         .join("");
@@ -356,8 +381,13 @@ async function refreshPredictByApi() {
       badgeEl.classList.remove("text-bg-danger");
       badgeEl.classList.add("text-bg-success");
       badgeEl.textContent = "暂无预警";
-      boxEl.classList.add("d-none");
-      boxEl.innerHTML = "";
+      if (boxEl.classList.contains("forecast-alert-list")) {
+        boxEl.classList.add("is-empty");
+        boxEl.innerHTML = '<div class="text-muted small">暂无高峰预警，保持常规运维配置。</div>';
+      } else {
+        boxEl.classList.add("d-none");
+        boxEl.innerHTML = "";
+      }
     }
 
     const topRows = predictionRows.slice(0, 10);
@@ -436,14 +466,14 @@ async function refreshHeatDecayByApi() {
 
     const rows = res.data?.decay_rows || [];
     if (!rows.length) {
-      tbodyEl.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-4">暂无衰减周期数据。</td></tr>';
+      tbodyEl.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">暂无衰减周期数据。</td></tr>';
       return;
     }
 
     tbodyEl.innerHTML = rows
       .map((r) => {
         const decayDays = r.decay_days !== null && r.decay_days !== undefined ? r.decay_days : "-";
-        return `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.peak)}（${escapeHtml(r.peak_day)}）</td><td>${escapeHtml(decayDays)}</td></tr>`;
+        return `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.peak)}</td><td>${escapeHtml(r.peak_day)}</td><td>${escapeHtml(decayDays)}</td><td>${escapeHtml(r.threshold)}</td></tr>`;
       })
       .join("");
   } catch (e) {
@@ -455,6 +485,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initSidebarToggle();
   initThemeToggle();
   initDashboardCharts();
+  initProjectCompare();
   refreshDashboardChartsByApi();
   refreshPredictByApi();
   refreshRegionHeatmapByApi();

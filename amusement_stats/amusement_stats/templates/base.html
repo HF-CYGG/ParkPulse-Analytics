@@ -28,7 +28,13 @@
             {% endif %}
 
             <a class="sidebar-link {% if request.path == '/' %}active{% endif %}" href="/">
-              <span class="sidebar-icon">▦</span><span>看板总览</span>
+              <span class="sidebar-icon">▦</span><span>数据分析</span>
+            </a>
+            <a class="sidebar-link {% if request.path == '/forecast/' %}active{% endif %}" href="{% url 'dashboard_forecast' %}">
+              <span class="sidebar-icon">↗</span><span>模型预测</span>
+            </a>
+            <a class="sidebar-link {% if '/spatial-heat/' in request.path %}active{% endif %}" href="{% url 'dashboard_spatial_heat' %}">
+              <span class="sidebar-icon">◎</span><span>空间热度</span>
             </a>
             <a class="sidebar-link {% if '/records/' in request.path %}active{% endif %}" href="/records/new/">
               <span class="sidebar-icon">✎</span><span>游玩记录管理</span>
@@ -127,7 +133,11 @@
           <div class="small text-muted">
             当前位置：
             {% if request.path == '/' %}
-              看板总览
+              数据分析
+            {% elif request.path == '/forecast/' %}
+              模型预测中心
+            {% elif '/spatial-heat/' in request.path %}
+              空间热度
             {% elif '/staff/' in request.path %}
               工作人员工作台
             {% elif '/records/' in request.path %}

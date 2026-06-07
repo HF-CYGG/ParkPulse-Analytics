@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}模型预测中心 - ParkPulse Analytics{% endblock %}
+{% block page_title %}模型预测中心{% endblock %}
+
+{% block content %}
+  <section class="dashboard-hero forecast-hero mb-4">
+    <div>
+      <div class="dashboard-kicker">Forecast Operations</div>
+      <h2 class="dashboard-title">未来 7 天热度预测与高峰预警</h2>
+      <p class="dashboard-subtitle mb-0">集中查看预测模型输出、预警建议、模型误差评估和空间热度联动，便于提前安排运维与疏导人员。</p>
+    </div>
+    <div class="forecast-mode-box">
+      <span>当前模型</span>
+      <strong>{{ forecast_mode }}</strong>
+    </div>
+  </section>
+
+  <section class="kpi-grid mb-4">
+    <div class="kpi-card accent-blue">
+      <div class="kpi-label">预测项目数</div>
+      <div class="kpi-value">{{ forecast_items|length }}</div>
+      <div class="kpi-meta positive">未来 7 天滚动预测</div>
+    </div>
+    <div class="kpi-card accent-red">
+      <div class="kpi-label">高峰预警</div>
+      <div class="kpi-value">{{ forecast_alerts|length }}</div>
+      <div class="kpi-meta {% if forecast_alerts %}negative{% else %}positive{% endif %}">{% if forecast_alerts %}需要提前排班{% else %}暂无高峰风险{% endif %}</div>
+    </div>
+    <div class="kpi-card accent-violet">
+      <div class="kpi-label">最高预测项目</div>
+      <div class="kpi-value compact">{{ peak_row.name|default:"暂无" }}</div>
+      <div class="kpi-meta">峰值客流 {{ peak_row.predicted_best|default:"-" }}</div>
+    </div>
+    <div class="kpi-card accent-green">
+      <div class="kpi-label">评估样本</div>
+      <div class="kpi-value">{{ evaluation_summary.count }}</div>
+      <div class="kpi-meta">平均 MAE {{ evaluation_summary.avg_mae|default:"-" }}</div>
+    </div>
+  </section>
+
+  <section class="dashboard-section mb-4">
+    <div class="section-heading">
+      <div>
+        <h5>预测时间轴</h5>
+        <p>拖动时间轴查看任意预测日的项目热度、客流和排队压力。</p>
+      </div>
+      <span class="section-badge">{% if forecast_alerts %}高峰预警 {{ forecast_alerts|length }} 项{% else %}暂无高峰预警{% endif %}</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-xl-8">
+        <div class="analysis-panel h-100">
+          <div class="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
+            <label class="form-label small text-muted mb-0 flex-grow-1" for="forecastDaySlider">
+              预测日期：<span id="forecastDayLabel">第 1 天</span>
+              <input class="form-range mt-2" id="forecastDaySlider" type="range" min="0" max="6" step="1" value="0">
+            </label>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>项目</th><th>热度</th><th>预测人次</th><th>排队</th><th>预警</th></tr></thead>
+              <tbody id="forecastTimelineBody"><tr><td colspan="5" class="text-center text-muted">正在加载预测结果...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4">
+        <div class="analysis-panel h-100">
+          <div class="panel-title">高峰预警列表</div>
+          <div id="predictAlertBox" class="forecast-alert-list {% if not forecast_alerts %}is-empty{% endif %}">
+            {% for a in forecast_alerts %}
+              <div class="forecast-alert-item">
+                <strong>【{{ a.name }}】</strong>
+                <span>{{ a.warning|default:"预测峰值客流接近阈值，请关注排队压力。" }}</span>
+              </div>
+            {% empty %}
+              <div class="text-muted small">暂无高峰预警，保持常规运维配置。</div>
+            {% endfor %}
+          </div>
+          <div id="predictAlertBadge" class="d-none">{% if forecast_alerts %}预警 {{ forecast_alerts|length }} 项{% else %}暂无预警{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-section mb-4">
+    <div class="section-heading">
+      <div>
+        <h5>预测明细与模型评估</h5>
+        <p>预测表使用 `/api/predict/` 刷新，评估表展示最近一次 MAE/MSE/R2 结果。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-primary" href="/analytics/api/forecast-evaluation/?refresh=1" target="_blank">刷新评估 API</a>
+    </div>
+    <div class="row g-3">
+      <div class="col-xl-7">
+        <div class="analysis-panel h-100">
+          <div class="panel-title">客流预测与阈值</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>项目</th><th>预测次日客流</th><th>峰值预测</th><th>阈值</th><th>状态</th></tr></thead>
+              <tbody id="predictTableBody">
+                {% for row in prediction_rows %}
+                  <tr><td>{{ row.name }}</td><td>{{ row.predicted_next_day }}</td><td>{{ row.predicted_lr }}</td><td>{{ row.threshold }} / {{ row.capacity_risk_threshold }}</td><td>{% if row.is_alert %}<span class="badge text-bg-danger">预警</span>{% else %}<span class="badge text-bg-success">正常</span>{% endif %}</td></tr>
+                {% empty %}
+                  <tr><td colspan="5" class="text-center text-muted py-3">暂无可预测数据。</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-5">
+        <div class="analysis-panel h-100">
+          <div class="panel-title">模型误差评估</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>项目</th><th>模型</th><th>MAE</th><th>MSE</th><th>R2</th></tr></thead>
+              <tbody>
+                {% for row in evaluation_rows %}
+                  <tr><td>{{ row.project_name }}</td><td>{{ row.model_name }}</td><td>{{ row.mae }}</td><td>{{ row.mse }}</td><td>{{ row.r2 }}</td></tr>
+                {% empty %}
+                  <tr><td colspan="5" class="text-center text-muted py-3">暂无评估结果，可点击刷新评估 API。</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-section mb-4">
+    <div class="section-heading">
+      <div>
+        <h5>空间热度联动</h5>
+        <p>预测高热项目可结合空间辐射范围，提前调整周边餐饮、文创和休闲区资源。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard_spatial_heat' %}">打开空间热度图</a>
+    </div>
+    <div class="analysis-panel">
+      <div class="row g-3">
+        <div class="col-xl-5">
+          <div class="list-group list-group-flush" id="spatialHeatList">
+            {% for item in spatial_heat_items %}
+              <button class="list-group-item list-group-item-action px-0" type="button" data-project-id="{{ item.project_id }}">
+                <div class="d-flex justify-content-between"><strong>{{ item.project_name }}</strong><span class="badge text-bg-warning">{{ item.score }}</span></div>
+                <div class="small text-muted">辐射半径 {{ item.radius }} 米；点击查看带动业态。</div>
+              </button>
+            {% empty %}
+              <div class="text-muted small">暂无空间热力数据。</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="col-xl-7">
+          <div class="forecast-spatial-detail" id="spatialHeatDetail">点击项目查看餐饮、文创等连带热度。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  {{ forecast_items|json_script:"forecast-items" }}
+  {{ spatial_heat_items|json_script:"spatial-heat-items" }}
+  <script>
+    (function () {
+      function readJson(id, fallback) {
+        const node = document.getElementById(id);
+        if (!node) return fallback;
+        try { return JSON.parse(node.textContent); } catch (e) { return fallback; }
+      }
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function (ch) {
+          return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[ch];
+        });
+      }
+      const forecasts = readJson("forecast-items", []);
+      const slider = document.getElementById("forecastDaySlider");
+      const label = document.getElementById("forecastDayLabel");
+      const body = document.getElementById("forecastTimelineBody");
+      function renderForecast(dayIndex) {
+        if (!body) return;
+        const rows = forecasts.map(function (item) {
+          const forecast = (item.forecast || [])[dayIndex] || {};
+          return {
+            project: item.project_name,
+            score: forecast.predicted_score || 0,
+            visits: forecast.predicted_visits || 0,
+            queue: forecast.predicted_queue || 0,
+            label: forecast.label || ("第 " + (dayIndex + 1) + " 天"),
+            warning: forecast.warning || "",
+            alert: forecast.alert_level || "none"
+          };
+        }).sort(function (a, b) { return b.score - a.score; });
+        if (label && rows[0]) label.textContent = rows[0].label;
+        body.innerHTML = rows.length ? rows.map(function (row) {
+          const badge = row.alert === "high" ? "text-bg-danger" : (row.alert === "watch" ? "text-bg-warning" : "text-bg-success");
+          const text = row.warning || (row.alert === "none" ? "正常" : "关注");
+          return "<tr><td>" + escapeHtml(row.project) + "</td><td>" + row.score + "</td><td>" + row.visits + "</td><td>" + row.queue + " 分钟</td><td><span class=\"badge " + badge + "\">" + escapeHtml(text) + "</span></td></tr>";
+        }).join("") : "<tr><td colspan=\"5\" class=\"text-center text-muted\">暂无预测结果。</td></tr>";
+      }
+      if (slider) {
+        slider.addEventListener("input", function () { renderForecast(parseInt(slider.value || "0", 10)); });
+        renderForecast(parseInt(slider.value || "0", 10));
+      }
+      const spatial = readJson("spatial-heat-items", []);
+      const detail = document.getElementById("spatialHeatDetail");
+      document.querySelectorAll("#spatialHeatList [data-project-id]").forEach(function (button) {
+        button.addEventListener("click", function () {
+          const id = parseInt(button.getAttribute("data-project-id") || "0", 10);
+          const item = spatial.find(function (row) { return row.project_id === id; });
+          if (!item || !detail) return;
+          const linked = (item.linked_heat || []).map(function (row) { return escapeHtml(row.target) + " " + row.score + " 分"; }).join("；") || "暂无明显连带热度";
+          detail.innerHTML = "<strong>" + escapeHtml(item.project_name) + "</strong>：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + linked;
+        });
+      });
+    })();
+  </script>
+{% endblock %}

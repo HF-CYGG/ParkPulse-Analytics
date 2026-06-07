@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}看板 - ParkPulse Analytics{% endblock %}
-{% block page_title %}运营看板{% endblock %}
+{% block title %}数据分析看板 - ParkPulse Analytics{% endblock %}
+{% block page_title %}数据分析看板{% endblock %}
 
 {% block content %}
   {% if queue_alert_rows %}
@@ -13,265 +13,216 @@
     </div>
   {% endif %}
 
-  <div class="card shadow-sm border-0 mb-3">
-    <div class="card-body">
-      <form class="row g-2 align-items-end" method="get">
-        <div class="col-md-3">
-          <label class="form-label">开始日期</label>
-          <input type="date" class="form-control" name="start_date" value="{{ start_date }}" />
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">结束日期</label>
-          <input type="date" class="form-control" name="end_date" value="{{ end_date }}" />
-        </div>
-        <div class="col-md-2 d-grid"><button class="btn btn-primary" type="submit">更新看板</button></div>
-        <div class="col-md-2 d-grid"><a class="btn btn-outline-secondary" href="/?start_date={{ start_date }}&end_date={{ end_date }}">重置</a></div>
-        {% if is_admin %}
-          <div class="col-12 mt-2">
-            <div class="small text-muted mb-2">数据导出（管理员）</div>
-            <div class="row g-2">
-              <div class="col-md-3 d-grid"><a class="btn btn-outline-success" href="/export/csv/?start_date={{ start_date }}&end_date={{ end_date }}">导出 CSV</a></div>
-              <div class="col-md-3 d-grid"><a class="btn btn-outline-success" href="/export/xlsx/?start_date={{ start_date }}&end_date={{ end_date }}">导出 XLSX</a></div>
-              <div class="col-md-3 d-grid"><a class="btn btn-outline-warning" href="/report/weekly/xlsx/?start_date={{ start_date }}&end_date={{ end_date }}">生成周报 XLSX</a></div>
-              <div class="col-md-3 d-grid"><a class="btn btn-outline-warning" href="/report/weekly/html/?start_date={{ start_date }}&end_date={{ end_date }}">生成周报 HTML</a></div>
-            </div>
-          </div>
-        {% endif %}
-      </form>
+  <section class="dashboard-hero analysis-hero mb-4">
+    <div>
+      <div class="dashboard-kicker">Operations Analytics</div>
+      <h2 class="dashboard-title">园区经营数据分析</h2>
+      <p class="dashboard-subtitle mb-0">聚合客流、排队、项目热度、区域分布与运营效率，面向日常经营复盘和现场调度。</p>
     </div>
-  </div>
+    <form class="dashboard-toolbar" method="get">
+      <label>
+        <span>开始日期</span>
+        <input type="date" class="form-control" name="start_date" value="{{ start_date }}" />
+      </label>
+      <label>
+        <span>结束日期</span>
+        <input type="date" class="form-control" name="end_date" value="{{ end_date }}" />
+      </label>
+      <button class="btn btn-primary" type="submit">更新</button>
+      <a class="btn btn-outline-secondary" href="/">重置</a>
+    </form>
+  </section>
 
-  <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card metric-card shadow-sm border-0"><div class="card-body">
-      <div class="metric-label">今日总客流</div>
-      <div class="metric-value">{{ metrics.total_visits }}</div>
-      <div class="metric-trend {% if metrics.visits_change_pct >= 0 %}up{% else %}down{% endif %}">较上一周期 {% if metrics.visits_change_pct >= 0 %}+{% endif %}{{ metrics.visits_change_pct }}%</div>
-      <div class="small text-muted mt-1">同比：{% if metrics.visits_yoy_pct is not none %}{% if metrics.visits_yoy_pct >= 0 %}+{% endif %}{{ metrics.visits_yoy_pct }}%{% else %}-{% endif %} · 环比：{% if metrics.visits_qoq_pct is not none %}{% if metrics.visits_qoq_pct >= 0 %}+{% endif %}{{ metrics.visits_qoq_pct }}%{% else %}-{% endif %}</div>
+  {% if is_admin %}
+    <section class="dashboard-actionbar mb-4">
+      <div>
+        <div class="fw-semibold">数据导出</div>
+        <div class="small text-muted">导出当前日期区间内的游玩记录和周报。</div>
+      </div>
+      <div class="dashboard-actions">
+        <a class="btn btn-outline-success" href="/export/csv/?start_date={{ start_date }}&end_date={{ end_date }}">导出 CSV</a>
+        <a class="btn btn-outline-success" href="/export/xlsx/?start_date={{ start_date }}&end_date={{ end_date }}">导出 XLSX</a>
+        <a class="btn btn-outline-warning" href="/report/weekly/xlsx/?start_date={{ start_date }}&end_date={{ end_date }}">周报 XLSX</a>
+        <a class="btn btn-outline-warning" href="/report/weekly/html/?start_date={{ start_date }}&end_date={{ end_date }}">周报 HTML</a>
+      </div>
+    </section>
+  {% endif %}
+
+  <section class="kpi-grid mb-4">
+    <div class="kpi-card accent-blue">
+      <div class="kpi-label">区间总客流</div>
+      <div class="kpi-value">{{ metrics.total_visits }}</div>
+      <div class="kpi-meta {% if metrics.visits_change_pct >= 0 %}positive{% else %}negative{% endif %}">较上一周期 {% if metrics.visits_change_pct >= 0 %}+{% endif %}{{ metrics.visits_change_pct }}%</div>
       <div id="sparkVisits" class="sparkline-box mt-2"></div>
-    </div></div></div>
-
-    <div class="col-md-3"><div class="card metric-card shadow-sm border-0"><div class="card-body">
-      <div class="metric-label">平均排队时长</div>
-      <div class="metric-value">{{ metrics.avg_queue }} 分钟</div>
-      <div class="metric-trend {% if metrics.queue_change <= 0 %}up{% else %}down{% endif %}">较上一周期 {% if metrics.queue_change >= 0 %}+{% endif %}{{ metrics.queue_change }} 分钟</div>
-      <div class="small text-muted mt-1">口径：区间内 `PlayRecord.queue_time` 的算术平均值。</div>
-      <div class="small text-muted mt-1">同比：{% if metrics.avg_queue_yoy_pct is not none %}{% if metrics.avg_queue_yoy_pct >= 0 %}+{% endif %}{{ metrics.avg_queue_yoy_pct }}%{% else %}-{% endif %} · 环比：{% if metrics.avg_queue_qoq_pct is not none %}{% if metrics.avg_queue_qoq_pct >= 0 %}+{% endif %}{{ metrics.avg_queue_qoq_pct }}%{% else %}-{% endif %}</div>
+    </div>
+    <div class="kpi-card accent-green">
+      <div class="kpi-label">平均排队时长</div>
+      <div class="kpi-value">{{ metrics.avg_queue }} 分钟</div>
+      <div class="kpi-meta {% if metrics.queue_change <= 0 %}positive{% else %}negative{% endif %}">较上一周期 {% if metrics.queue_change >= 0 %}+{% endif %}{{ metrics.queue_change }} 分钟</div>
       <div id="sparkQueue" class="sparkline-box mt-2"></div>
-    </div></div></div>
+    </div>
+    <div class="kpi-card accent-violet">
+      <div class="kpi-label">活跃项目</div>
+      <div class="kpi-value">{{ metrics.active_projects }} / {{ metrics.total_projects }}</div>
+      <div class="kpi-meta positive">正常或维护中项目</div>
+    </div>
+    <div class="kpi-card accent-amber">
+      <div class="kpi-label">设备运行健康度</div>
+      <div class="kpi-value">{{ metrics.healthy_ratio }}%</div>
+      <div class="kpi-meta positive">基于项目状态实时统计</div>
+    </div>
+  </section>
 
-    <div class="col-md-3"><div class="card metric-card shadow-sm border-0"><div class="card-body">
-      <div class="metric-label">热门项目活跃数</div>
-      <div class="metric-value">{{ metrics.active_projects }} / {{ metrics.total_projects }}</div>
-      <div class="metric-trend up">当前正常或维护中的项目</div>
-    </div></div></div>
-
-    <div class="col-md-3"><div class="card metric-card shadow-sm border-0"><div class="card-body">
-      <div class="metric-label">设备运行健康度</div>
-      <div class="metric-value">{{ metrics.healthy_ratio }}%</div>
-      <div class="metric-trend up">基于项目状态实时统计</div>
-    </div></div></div>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-lg-4"><div class="card shadow-sm border-0"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2"><h5 class="card-title mb-0">项目类型占比</h5><span class="badge text-bg-secondary">区间统计</span></div>
-      <div id="typeRatioChart" class="chart-box"></div>
-    </div></div></div>
-
-    <div class="col-lg-8"><div class="card shadow-sm border-0 h-100"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center"><h5 class="card-title mb-0">重复游玩率</h5><span class="badge text-bg-primary">{{ metrics.repeat_rate }}%</span></div>
-      <p class="text-muted small mb-0 mt-2">口径：区间内“重复游玩次数总和 / 游玩记录数”。用于衡量项目黏性。</p>
-      <div id="repeatRateChart" class="chart-box mt-3" style="height: 220px;"></div>
-    </div></div></div>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-lg-6"><div class="card shadow-sm border-0 h-100"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2"><h5 class="card-title mb-0">周转率（效率）</h5><span class="badge text-bg-warning">{{ metrics.turnover_rate }}%</span></div>
-      <p class="text-muted small mb-3">口径：区间内总游玩记录数 / 参与项目承载量之和（百分比）。</p>
-      <div id="turnoverChart" class="chart-box" style="height: 280px;"></div>
-    </div></div></div>
-
-    <div class="col-lg-6"><div class="card shadow-sm border-0 h-100"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-2"><h5 class="card-title mb-0">Top 5 周转项目</h5><span class="badge text-bg-secondary">区间统计</span></div>
-      <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-        <thead class="table-light"><tr><th>排名</th><th>项目</th><th>周转率</th></tr></thead>
-        <tbody>
-          {% for row in top_turnover_rows %}<tr><td>{{ forloop.counter }}</td><td>{{ row.name }}</td><td>{{ row.turnover_rate }}%</td></tr>{% empty %}
-          <tr><td colspan="3" class="text-center text-muted py-4">暂无周转数据。</td></tr>{% endfor %}
-        </tbody>
-      </table></div>
-    </div></div></div>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7"><div class="card shadow-sm border-0 h-100"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="card-title mb-0">区域热力图（分区示意）</h5><span class="badge text-bg-primary">热区分布</span></div>
-      <div id="regionHeatmapChart" class="chart-box" style="height: 320px;"></div>
-      <p class="text-muted small mt-2 mb-0">说明：当前未接入真实地理坐标，以园区分区做聚合展示。</p>
-    </div></div></div>
-
-    <div class="col-lg-5"><div class="card shadow-sm border-0 h-100"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="card-title mb-0">热度衰减周期识别</h5><span class="badge text-bg-warning">峰值后衰减</span></div>
-      <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-        <thead class="table-light"><tr><th>项目</th><th>峰值</th><th>衰减周期(天)</th></tr></thead>
-        <tbody id="decayTableBody">
-          {% for row in decay_rows %}<tr><td>{{ row.name }}</td><td>{{ row.peak }}（{{ row.peak_day }}）</td><td>{% if row.decay_days is not none %}{{ row.decay_days }}{% else %}-{% endif %}</td></tr>{% empty %}
-          <tr><td colspan="3" class="text-center text-muted py-4">暂无衰减周期数据。</td></tr>{% endfor %}
-        </tbody>
-      </table></div>
-      <p class="text-muted small mt-2 mb-0">口径：峰值后首次下降到峰值 30% 以下所需天数。</p>
-    </div></div></div>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-lg-7"><div class="card shadow-sm border-0"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="card-title mb-0">热门项目排行</h5><span class="badge text-bg-primary">{{ start_date }} ~ {{ end_date }}</span></div>
-      <div id="hotRankChart" class="chart-box"></div>
-      <hr class="my-3" />
-      <div class="d-flex justify-content-between align-items-center mb-2"><h6 class="mb-0">综合热度评分排行（Score）</h6><span class="badge text-bg-secondary">多维评分</span></div>
-      <div id="hotScoreChart" class="chart-box" style="height: 240px;"></div>
-      <div id="projectComparePanel" class="border rounded-3 p-3 mt-3 bg-light bg-opacity-50">
-        <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-          <h6 class="mb-0">项目对比模式</h6>
-          <span class="badge text-bg-info">最多 3 项</span>
+  <section class="dashboard-section mb-4">
+    <div class="section-heading">
+      <div>
+        <h5>客流概览</h5>
+        <p>按项目类型、小时段和区域聚合，快速定位经营高峰与热区。</p>
+      </div>
+      <span class="section-badge">{{ start_date }} ~ {{ end_date }}</span>
+    </div>
+    <div class="row g-3">
+      <div class="col-xl-4">
+        <div class="analysis-panel" id="projectComparePanel">
+          <div class="panel-title">项目类型占比</div>
+          <div id="typeRatioChart" class="chart-box"></div>
         </div>
-        <div class="row g-2 mb-2" id="projectCompareChoices">
-          {% for row in score_rows|slice:":6" %}
-            <div class="col-md-4">
+      </div>
+      <div class="col-xl-8">
+        <div class="analysis-panel">
+          <div class="panel-title">时段客流趋势</div>
+          <div id="trafficLineChart" class="chart-box"></div>
+        </div>
+      </div>
+      <div class="col-xl-7">
+        <div class="analysis-panel">
+          <div class="panel-title">区域热力图</div>
+          <div id="regionHeatmapChart" class="chart-box"></div>
+        </div>
+      </div>
+      <div class="col-xl-5">
+        <div class="analysis-panel">
+          <div class="panel-title">项目状态分布</div>
+          <div id="statusPieChart" class="chart-box"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-section mb-4">
+    <div class="section-heading">
+      <div>
+        <h5>项目表现</h5>
+        <p>综合热度、复玩率、周转效率和衰减周期用于评估项目吸引力与运营效率。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard_forecast' %}">查看模型预测</a>
+    </div>
+    <div class="row g-3">
+      <div class="col-xl-7">
+        <div class="analysis-panel">
+          <div class="panel-title">热门项目排行</div>
+          <div id="hotRankChart" class="chart-box"></div>
+          <div class="panel-subtitle mt-3">综合热度评分排行</div>
+          <div id="hotScoreChart" class="chart-box compact-chart"></div>
+        </div>
+      </div>
+      <div class="col-xl-5">
+        <div class="analysis-panel">
+          <div class="panel-title">项目对比模式</div>
+          <div class="compare-choice-grid" id="projectCompareChoices">
+            {% for row in score_rows|slice:":6" %}
               <label class="form-check small mb-0">
-                <input class="form-check-input project-compare-check" type="checkbox" value="{{ row.project }}" data-score="{{ row.score }}" data-queue="{{ row.avg_queue }}" data-repeat="{{ row.repeat_rate }}" data-abnormal="{{ row.abnormal_rate }}" {% if forloop.counter <= 2 %}checked{% endif %}>
-                <span class="form-check-label">{{ row.project }}</span>
+                <input class="form-check-input project-compare-check" type="checkbox" value="{{ row.name }}" data-score="{{ row.score }}" data-queue="{{ row.avg_queue }}" data-repeat="{{ row.repeat_rate }}" data-abnormal="{{ row.downtime_ratio }}" {% if forloop.counter <= 2 %}checked{% endif %}>
+                <span class="form-check-label">{{ row.name }}</span>
               </label>
-            </div>
-          {% endfor %}
-        </div>
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead class="table-light"><tr><th>项目</th><th>热度</th><th>排队</th><th>复玩率</th><th>异常率</th></tr></thead>
-            <tbody id="projectCompareBody"></tbody>
-          </table>
-        </div>
-      </div>
-      <p class="text-muted small mb-0 mt-2">口径：人次、重复游玩率、周转率为正向；排队时长和异常状态占比为负向；归一化后加权得到 0~100 分。</p>
-    </div></div></div>
-
-    <div class="col-lg-5"><div class="card shadow-sm border-0"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="card-title mb-0">项目状态分布</h5><span class="badge text-bg-success">实时</span></div>
-      <div id="statusPieChart" class="chart-box"></div>
-    </div></div></div>
-  </div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-lg-8"><div class="card shadow-sm border-0"><div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3"><h5 class="card-title mb-0">时段客流趋势</h5><span class="badge text-bg-info">按小时</span></div>
-      <div id="trafficLineChart" class="chart-box"></div>
-    </div></div></div>
-
-    <div class="col-lg-4"><div class="card shadow-sm border-0 h-100"><div class="card-body">
-      <h5 class="card-title">快捷操作</h5>
-      <p class="text-muted small">常用运营动作入口。</p>
-      <div class="d-grid gap-2">
-        <a href="/records/new/" class="btn btn-primary">录入游玩数据</a>
-        {% if is_staff_or_admin and not is_admin %}<a href="{% url 'staff_workbench' %}" class="btn btn-outline-primary">返回工作台</a>{% endif %}
-        <a href="/report/weekly/?start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-outline-secondary">查看周报页面</a>
-        {% if is_staff_or_admin %}
-          <a href="/projects/" class="btn btn-outline-primary">管理游乐项目</a>
-        {% endif %}
-        {% if is_admin %}
-          <a href="/export/csv/?start_date={{ start_date }}&end_date={{ end_date }}" class="btn btn-outline-secondary">导出统计报表（CSV）</a>
-        {% endif %}
-      </div>
-    </div></div></div>
-  </div>
-
-  <div class="card shadow-sm border-0 mb-4"><div class="card-body">
-    <h5 class="card-title mb-3">Top 10 项目明细（含综合热度）</h5>
-    <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-      <thead class="table-light"><tr><th>排名</th><th>项目名称</th><th>游玩人次</th><th>平均排队时长(分钟)</th><th>综合热度</th></tr></thead>
-      <tbody>
-        {% for row in score_rows %}
-          <tr><td>{{ forloop.counter }}</td><td>{{ row.name }}</td><td>{{ row.visits }}</td><td>{{ row.avg_queue }}</td><td><span class="badge text-bg-primary">{{ row.score }}</span></td></tr>
-        {% empty %}<tr><td colspan="5" class="text-center text-muted py-3">当前筛选区间暂无统计数据。</td></tr>{% endfor %}
-      </tbody>
-    </table></div>
-  </div></div>
-
-  <div class="card shadow-sm border-0 mb-4"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="card-title mb-0">客流预测与预警（移动平均）</h5>
-      <span id="predictAlertBadge" class="badge {% if alert_rows %}text-bg-danger{% else %}text-bg-success{% endif %}">{% if alert_rows %}预警 {{ alert_rows|length }} 项{% else %}暂无预警{% endif %}</span>
-    </div>
-    <div id="predictAlertBox" class="alert alert-danger {% if not alert_rows %}d-none{% endif %}">
-      {% for a in alert_rows %}<div>【{{ a.name }}】预测次日客流 {{ a.predicted_next_day }}，超过阈值 {{ a.threshold }}</div>{% endfor %}
-    </div>
-    <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-      <thead class="table-light"><tr><th>项目</th><th>预测次日客流</th><th>回归预测</th><th>阈值</th><th>状态</th></tr></thead>
-      <tbody id="predictTableBody">
-        {% for row in prediction_rows %}
-          <tr><td>{{ row.name }}</td><td>{{ row.predicted_next_day }}</td><td>{{ row.predicted_lr }}</td><td>{{ row.threshold }} / {{ row.capacity_risk_threshold }}</td><td>{% if row.is_alert %}<span class="badge text-bg-danger">预警</span>{% else %}<span class="badge text-bg-success">正常</span>{% endif %}</td></tr>
-        {% empty %}<tr><td colspan="5" class="text-center text-muted">暂无可预测数据。</td></tr>{% endfor %}
-      </tbody>
-    </table></div>
-  </div></div>
-
-  <div class="row g-3 mb-4">
-    <div class="col-xl-7">
-      <div class="card shadow-sm border-0 h-100"><div class="card-body">
-        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-          <div>
-            <h5 class="card-title mb-1">未来 7 天热度走势</h5>
-            <div class="small text-muted">预测模式：{{ forecast_mode }}；拖动时间轴查看每日项目热度。</div>
+            {% endfor %}
           </div>
-          <span class="badge {% if forecast_alerts %}text-bg-danger{% else %}text-bg-success{% endif %}">
-            {% if forecast_alerts %}高峰预警 {{ forecast_alerts|length }} 项{% else %}暂无高峰预警{% endif %}
-          </span>
+          <div class="table-responsive mt-3">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light"><tr><th>项目</th><th>热度</th><th>排队</th><th>复玩率</th><th>维护分钟</th></tr></thead>
+              <tbody id="projectCompareBody"></tbody>
+            </table>
+          </div>
         </div>
-        <label class="form-label small text-muted" for="forecastDaySlider">预测日期：<span id="forecastDayLabel">第 1 天</span></label>
-        <input class="form-range" id="forecastDaySlider" type="range" min="0" max="6" step="1" value="0">
-        <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-          <thead class="table-light"><tr><th>项目</th><th>热度</th><th>预测人次</th><th>排队</th><th>预警</th></tr></thead>
-          <tbody id="forecastTimelineBody"><tr><td colspan="5" class="text-center text-muted">正在加载预测结果...</td></tr></tbody>
-        </table></div>
-      </div></div>
+      </div>
+      <div class="col-xl-6">
+        <div class="analysis-panel">
+          <div class="panel-title">重复游玩率</div>
+          <div id="repeatRateChart" class="chart-box mid-chart"></div>
+        </div>
+      </div>
+      <div class="col-xl-6">
+        <div class="analysis-panel">
+          <div class="panel-title">周转率 Top 5</div>
+          <div id="turnoverChart" class="chart-box mid-chart"></div>
+        </div>
+      </div>
     </div>
-    <div class="col-xl-5">
-      <div class="card shadow-sm border-0 h-100"><div class="card-body">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h5 class="card-title mb-0">空间热度辐射</h5>
-          <span class="badge text-bg-primary">项目 + 周边业态</span>
-        </div>
-        <div class="list-group list-group-flush" id="spatialHeatList">
-          {% for item in spatial_heat_items %}
-            <button class="list-group-item list-group-item-action px-0" type="button" data-project-id="{{ item.project_id }}">
-              <div class="d-flex justify-content-between"><strong>{{ item.project_name }}</strong><span class="badge text-bg-warning">{{ item.score }}</span></div>
-              <div class="small text-muted">辐射半径 {{ item.radius }} 米；点击查看带动业态。</div>
-            </button>
-          {% empty %}
-            <div class="text-muted small">暂无空间热力数据。</div>
-          {% endfor %}
-        </div>
-        <div class="alert alert-light border mt-3 mb-0 small" id="spatialHeatDetail">点击项目查看餐饮、文创等连带热度。</div>
-      </div></div>
-    </div>
-  </div>
+  </section>
 
-  <div class="card shadow-sm border-0 mb-4"><div class="card-body">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-      <h5 class="card-title mb-0">模型误差评估</h5>
-      <a class="btn btn-sm btn-outline-primary" href="/analytics/api/forecast-evaluation/?refresh=1" target="_blank">刷新评估 API</a>
+  <section class="dashboard-section mb-4">
+    <div class="section-heading">
+      <div>
+        <h5>空间热度与明细</h5>
+        <p>查看项目热度辐射摘要，并保留完整明细表用于经营复盘。</p>
+      </div>
+      <a class="btn btn-sm btn-outline-primary" href="{% url 'dashboard_spatial_heat' %}">打开空间热度图</a>
     </div>
-    <div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0">
-      <thead class="table-light"><tr><th>项目</th><th>模型</th><th>MAE</th><th>MSE</th><th>R2</th><th>样本量</th></tr></thead>
-      <tbody>
-        {% for row in evaluation_rows %}
-          <tr><td>{{ row.project_name }}</td><td>{{ row.model_name }}</td><td>{{ row.mae }}</td><td>{{ row.mse }}</td><td>{{ row.r2 }}</td><td>{{ row.sample_size }}</td></tr>
-        {% empty %}
-          <tr><td colspan="6" class="text-center text-muted py-3">暂无评估结果，可点击“刷新评估 API”生成 baseline 评估。</td></tr>
-        {% endfor %}
-      </tbody>
-    </table></div>
-  </div></div>
+    <div class="row g-3">
+      <div class="col-xl-4">
+        <div class="analysis-panel">
+          <div class="panel-title">空间热度摘要</div>
+          <div class="list-group list-group-flush">
+            {% for item in spatial_heat_items %}
+              <div class="list-group-item px-0">
+                <div class="d-flex justify-content-between gap-2">
+                  <strong>{{ item.project_name }}</strong>
+                  <span class="badge text-bg-warning">{{ item.score }}</span>
+                </div>
+                <div class="small text-muted">辐射半径 {{ item.radius }} 米</div>
+              </div>
+            {% empty %}
+              <div class="text-muted small">暂无空间热力数据。</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-8">
+        <div class="analysis-panel">
+          <div class="panel-title">Top 10 项目明细</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>排名</th><th>项目名称</th><th>游玩人次</th><th>平均排队</th><th>综合热度</th></tr></thead>
+              <tbody>
+                {% for row in score_rows %}
+                  <tr><td>{{ forloop.counter }}</td><td>{{ row.name }}</td><td>{{ row.visits }}</td><td>{{ row.avg_queue }} 分钟</td><td><span class="badge text-bg-primary">{{ row.score }}</span></td></tr>
+                {% empty %}
+                  <tr><td colspan="5" class="text-center text-muted py-3">当前筛选区间暂无统计数据。</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-12">
+        <div class="analysis-panel">
+          <div class="panel-title">热度衰减周期识别</div>
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle mb-0">
+              <thead class="table-light"><tr><th>项目</th><th>峰值</th><th>峰值日期</th><th>衰减周期</th><th>30% 阈值</th></tr></thead>
+              <tbody id="decayTableBody">
+                {% for row in decay_rows %}
+                  <tr><td>{{ row.name }}</td><td>{{ row.peak }}</td><td>{{ row.peak_day }}</td><td>{{ row.decay_days }}</td><td>{{ row.threshold }}</td></tr>
+                {% empty %}
+                  <tr><td colspan="5" class="text-center text-muted py-3">暂无衰减周期数据。</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 {% endblock %}
 
 {% block scripts %}
@@ -293,75 +244,4 @@
   {{ region_heatmap_y_labels|json_script:"region-heatmap-y-labels" }}
   {{ region_heatmap_data|json_script:"region-heatmap-data" }}
   {{ region_heatmap_max|json_script:"region-heatmap-max" }}
-  {{ forecast_items|json_script:"forecast-items" }}
-  {{ spatial_heat_items|json_script:"spatial-heat-items" }}
-  <script>
-    (function () {
-      function readJson(id, fallback) {
-        const node = document.getElementById(id);
-        if (!node) return fallback;
-        try { return JSON.parse(node.textContent); } catch (e) { return fallback; }
-      }
-      function escapeHtml(value) {
-        return String(value).replace(/[&<>"']/g, function (ch) {
-          return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[ch];
-        });
-      }
-      const forecasts = readJson("forecast-items", []);
-      const slider = document.getElementById("forecastDaySlider");
-      const label = document.getElementById("forecastDayLabel");
-      const body = document.getElementById("forecastTimelineBody");
-      function renderForecast(dayIndex) {
-        if (!body) return;
-        const rows = forecasts.map(function (item) {
-          const forecast = (item.forecast || [])[dayIndex] || {};
-          return {
-            project: item.project_name,
-            score: forecast.predicted_score || 0,
-            visits: forecast.predicted_visits || 0,
-            queue: forecast.predicted_queue || 0,
-            label: forecast.label || ("第 " + (dayIndex + 1) + " 天"),
-            warning: forecast.warning || "",
-            alert: forecast.alert_level || "none"
-          };
-        }).sort(function (a, b) { return b.score - a.score; });
-        if (label && rows[0]) label.textContent = rows[0].label;
-        body.innerHTML = rows.length ? rows.map(function (row) {
-          const badge = row.alert === "high" ? "text-bg-danger" : (row.alert === "watch" ? "text-bg-warning" : "text-bg-success");
-          const text = row.warning || (row.alert === "none" ? "正常" : "关注");
-          return "<tr><td>" + escapeHtml(row.project) + "</td><td>" + row.score + "</td><td>" + row.visits + "</td><td>" + row.queue + " 分钟</td><td><span class=\"badge " + badge + "\">" + escapeHtml(text) + "</span></td></tr>";
-        }).join("") : "<tr><td colspan=\"5\" class=\"text-center text-muted\">暂无预测结果。</td></tr>";
-      }
-      if (slider) {
-        slider.addEventListener("input", function () { renderForecast(parseInt(slider.value || "0", 10)); });
-        renderForecast(parseInt(slider.value || "0", 10));
-      }
-      const spatial = readJson("spatial-heat-items", []);
-      const detail = document.getElementById("spatialHeatDetail");
-      document.querySelectorAll("#spatialHeatList [data-project-id]").forEach(function (button) {
-        button.addEventListener("click", function () {
-          const id = parseInt(button.getAttribute("data-project-id") || "0", 10);
-          const item = spatial.find(function (row) { return row.project_id === id; });
-          if (!item || !detail) return;
-          const linked = (item.linked_heat || []).map(function (row) { return escapeHtml(row.target) + " " + row.score + " 分"; }).join("；") || "暂无明显连带热度";
-          detail.innerHTML = "<strong>" + escapeHtml(item.project_name) + "</strong>：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + linked;
-        });
-      });
-      const compareBody = document.getElementById("projectCompareBody");
-      const compareChecks = Array.from(document.querySelectorAll(".project-compare-check"));
-      function renderCompare() {
-        if (!compareBody) return;
-        const checked = compareChecks.filter(function (box) { return box.checked; }).slice(0, 3);
-        compareChecks.forEach(function (box) {
-          if (!box.checked && checked.length >= 3) box.disabled = true;
-          else box.disabled = false;
-        });
-        compareBody.innerHTML = checked.map(function (box) {
-          return "<tr><td>" + escapeHtml(box.value) + "</td><td>" + box.dataset.score + "</td><td>" + box.dataset.queue + " 分钟</td><td>" + box.dataset.repeat + "%</td><td>" + box.dataset.abnormal + "%</td></tr>";
-        }).join("") || "<tr><td colspan=\"5\" class=\"text-center text-muted\">请选择 2-3 个项目进行对比。</td></tr>";
-      }
-      compareChecks.forEach(function (box) { box.addEventListener("change", renderCompare); });
-      renderCompare();
-    })();
-  </script>
 {% endblock %}

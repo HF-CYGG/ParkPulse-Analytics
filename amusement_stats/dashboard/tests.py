@@ -61,11 +61,23 @@ class DashboardFlowTests(TestCase):
         response = self.client.get(reverse("index"))
 
         self.assertEqual(response.status_code, 200)
-        # 页面主标题当前文案为“运营看板”，这里按真实用户可见文本断言。
-        self.assertContains(response, "运营看板")
+        self.assertContains(response, "数据分析看板")
         self.assertContains(response, self.project.name)
         self.assertContains(response, "projectComparePanel")
+        self.assertNotContains(response, "forecastDaySlider")
+        self.assertNotContains(response, "forecastTimelineBody")
+        self.assertNotContains(response, "predictTableBody")
         self.assertGreaterEqual(response.context["metrics"]["total_visits"], 1)
+
+    def test_forecast_dashboard_renders_for_admin(self):
+        response = self.client.get(reverse("dashboard_forecast"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "模型预测中心")
+        self.assertContains(response, "forecastDaySlider")
+        self.assertContains(response, "forecastTimelineBody")
+        self.assertContains(response, "predictTableBody")
+        self.assertContains(response, self.project.name)
 
     def test_spatial_heat_page_renders_for_admin(self):
         response = self.client.get(reverse("dashboard_spatial_heat"))
