@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Scenic ride preview">
+  <defs>
+    <linearGradient id="sunset" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e0f2fe"/>
+      <stop offset="58%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#f8fafc"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" fill="url(#sunset)"/>
+  <circle cx="760" cy="120" r="54" fill="#fbbf24"/>
+  <path d="M0 390c95-62 180-72 278-34 120 48 230 52 354 0 118-50 222-32 328 46v138H0z" fill="#bfdbfe"/>
+  <path d="M0 446c110-42 220-39 330-2 134 45 255 34 388-8 90-28 166-22 242 20v84H0z" fill="#93c5fd" opacity=".7"/>
+  <g transform="translate(480 260)">
+    <circle cx="0" cy="0" r="150" fill="none" stroke="#1d4ed8" stroke-width="16"/>
+    <circle cx="0" cy="0" r="16" fill="#1e293b"/>
+    <g stroke="#475569" stroke-width="6" opacity=".75">
+      <path d="M0-150V150"/>
+      <path d="M-150 0H150"/>
+      <path d="M-106-106 106 106"/>
+      <path d="M106-106-106 106"/>
+    </g>
+    <g fill="#f8fafc" stroke="#2563eb" stroke-width="5">
+      <rect x="-22" y="-184" width="44" height="34" rx="8"/>
+      <rect x="150" y="-22" width="44" height="34" rx="8"/>
+      <rect x="-22" y="150" width="44" height="34" rx="8"/>
+      <rect x="-194" y="-22" width="44" height="34" rx="8"/>
+      <rect x="98" y="-139" width="44" height="34" rx="8"/>
+      <rect x="98" y="105" width="44" height="34" rx="8"/>
+      <rect x="-142" y="105" width="44" height="34" rx="8"/>
+      <rect x="-142" y="-139" width="44" height="34" rx="8"/>
+    </g>
+    <path d="M-70 230 0 20 70 230" fill="none" stroke="#334155" stroke-width="14" stroke-linecap="round"/>
+  </g>
+  <rect x="0" y="466" width="960" height="74" fill="#c7f9cc"/>
+</svg>

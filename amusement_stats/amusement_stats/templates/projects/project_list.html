@@ -111,9 +111,9 @@
               <tr>
                 <td class="text-center">
                   {% if p.cover_image %}
-                    <img src="{{ p.cover_image.url }}" alt="" class="rounded border" style="max-height:48px;max-width:64px;object-fit:cover" />
+                    <img src="{{ p.cover_image.url }}" alt="{{ p.name }}" class="rounded border" style="max-height:48px;max-width:64px;object-fit:cover" />
                   {% else %}
-                    <img src="{% static 'img/project-placeholder.svg' %}" alt="" class="rounded border opacity-50" style="max-height:48px;max-width:64px;object-fit:cover" />
+                    <img src="{% static p.preview_image_static_path %}" alt="{{ p.name }}" class="rounded border" style="max-height:48px;max-width:64px;object-fit:cover" />
                   {% endif %}
                 </td>
                 <td>{{ p.name }}</td>

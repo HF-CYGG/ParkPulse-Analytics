@@ -96,6 +96,11 @@ a:hover .visitor-hub-tile {
   object-fit: cover;
 }
 
+.project-preview-image {
+  display: block;
+  background: #f8fafc;
+}
+
 /* Folium 嵌入：铺满容器 */
 .visitor-card iframe {
   width: 100% !important;

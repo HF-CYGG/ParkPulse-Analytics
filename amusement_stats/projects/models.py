@@ -71,3 +71,11 @@ class Project(models.Model):
         if self.project_type == Project.TYPE_VIEW:
             return Project.REGION_VIEW
         return Project.REGION_REST
+
+    def preview_image_static_path(self) -> str:
+        preview_paths = {
+            Project.TYPE_THRILL: "img/project-previews/thrill.svg",
+            Project.TYPE_FAMILY: "img/project-previews/family.svg",
+            Project.TYPE_VIEW: "img/project-previews/view.svg",
+        }
+        return preview_paths.get(self.project_type, "img/project-previews/default.svg")

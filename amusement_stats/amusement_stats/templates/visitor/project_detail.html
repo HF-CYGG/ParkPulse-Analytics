@@ -14,9 +14,9 @@
   <div class="visitor-card p-0 mb-4 overflow-hidden">
     <div class="ratio ratio-16x9 bg-light">
       {% if project.cover_image %}
-        <img src="{{ project.cover_image.url }}" alt="{{ project.name }}" class="object-fit-cover w-100 h-100" />
+        <img src="{{ project.cover_image.url }}" alt="{{ project.name }}" class="object-fit-cover w-100 h-100 project-preview-image" />
       {% else %}
-        <img src="{% static 'img/project-placeholder.svg' %}" alt="" class="object-fit-cover w-100 h-100 opacity-75" />
+        <img src="{% static project.preview_image_static_path %}" alt="{{ project.name }}" class="object-fit-cover w-100 h-100 project-preview-image" />
       {% endif %}
     </div>
 

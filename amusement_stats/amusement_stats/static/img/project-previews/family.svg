@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Family ride preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ecfeff"/>
+      <stop offset="100%" stop-color="#fff7ed"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="540" fill="url(#bg)"/>
+  <circle cx="170" cy="110" r="50" fill="#fde68a"/>
+  <path d="M0 420c170-58 314-50 462-12 178 45 326 36 498-38v170H0z" fill="#bbf7d0"/>
+  <g transform="translate(480 270)">
+    <path d="M0-190 72-18H-72z" fill="#f43f5e"/>
+    <path d="M-112-18H112L70 54H-70z" fill="#f97316"/>
+    <path d="M0-190v338" stroke="#475569" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="0" cy="-18" r="118" fill="none" stroke="#2563eb" stroke-width="14"/>
+    <g fill="#38bdf8">
+      <circle cx="0" cy="-136" r="18"/>
+      <circle cx="98" cy="-18" r="18"/>
+      <circle cx="0" cy="100" r="18"/>
+      <circle cx="-98" cy="-18" r="18"/>
+    </g>
+  </g>
+  <g transform="translate(200 330)">
+    <rect x="0" y="45" width="160" height="44" rx="20" fill="#7c3aed"/>
+    <circle cx="42" cy="96" r="16" fill="#0f172a"/>
+    <circle cx="118" cy="96" r="16" fill="#0f172a"/>
+    <path d="M32 45c8-52 74-54 92 0z" fill="#a78bfa"/>
+  </g>
+  <g transform="translate(680 325)">
+    <rect x="0" y="30" width="150" height="56" rx="16" fill="#06b6d4"/>
+    <circle cx="38" cy="92" r="14" fill="#0f172a"/>
+    <circle cx="112" cy="92" r="14" fill="#0f172a"/>
+    <path d="M24 30c18-45 92-45 110 0z" fill="#67e8f9"/>
+  </g>
+</svg>

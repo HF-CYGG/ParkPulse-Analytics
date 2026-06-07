@@ -518,3 +518,28 @@ class VisitorMapHeatPayloadTests(TestCase):
 
         self.assertContains(response, "visitorMapHeatData")
         self.assertContains(response, "mapHeatDetail")
+
+
+class VisitorProjectPreviewImageTests(TestCase):
+    def test_project_list_uses_type_specific_preview_images_when_cover_is_missing(self):
+        Project.objects.create(name="Preview Thrill Ride", project_type=Project.TYPE_THRILL)
+        Project.objects.create(name="Preview Family Ride", project_type=Project.TYPE_FAMILY)
+        Project.objects.create(name="Preview View Ride", project_type=Project.TYPE_VIEW)
+
+        response = self.client.get(reverse("visitor_project_list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "img/project-previews/thrill.svg")
+        self.assertContains(response, "img/project-previews/family.svg")
+        self.assertContains(response, "img/project-previews/view.svg")
+        self.assertNotContains(response, "img/project-placeholder.svg")
+
+    def test_project_detail_uses_type_specific_preview_image_with_project_alt_text(self):
+        project = Project.objects.create(name="Preview Detail Wheel", project_type=Project.TYPE_VIEW)
+
+        response = self.client.get(reverse("visitor_project_detail", args=[project.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "img/project-previews/view.svg")
+        self.assertContains(response, 'alt="Preview Detail Wheel"')
+        self.assertNotContains(response, "img/project-placeholder.svg")
