@@ -43,6 +43,12 @@ if [ "${DJANGO_MIGRATE:-1}" = "1" ]; then
   run_as_app python manage.py migrate --noinput
 fi
 
+if [ "${DJANGO_SEED_DEMO_DATA:-0}" = "1" ]; then
+  run_as_app python manage.py seed_showcase_data --days "${DJANGO_SHOWCASE_DAYS:-90}" --records-per-day "${DJANGO_SHOWCASE_RECORDS_PER_DAY:-120}"
+  run_as_app python manage.py rebuild_heat_snapshots --days "${DJANGO_SHOWCASE_DAYS:-90}"
+  run_as_app python manage.py train_heat_forecast --model all --days "${DJANGO_SHOWCASE_DAYS:-90}" --horizon 7
+fi
+
 if [ "$(id -u)" = "0" ]; then
   exec gosu "$APP_USER" "$@"
 fi

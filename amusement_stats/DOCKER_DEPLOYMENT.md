@@ -6,7 +6,7 @@
 crpi-9gmsq2s17re73ia9.cn-qingdao.personal.cr.aliyuncs.com/yyh163/parkpulse-analytics
 ```
 
-## 推荐构建方式
+## 构建方式
 
 项目支持两种构建方式：
 
@@ -86,7 +86,7 @@ root
 
 不要把容器运行用户设置为 `999`、`parkpulse` 或其他非 root 用户；否则启动脚本无法修正挂载目录权限。
 
-核心环境变量：
+## 核心环境变量
 
 ```text
 DJANGO_SECRET_KEY=生产随机密钥
@@ -104,6 +104,44 @@ PORT=8000
 ```text
 DJANGO_CSRF_TRUSTED_ORIGINS=https://你的域名
 DJANGO_SECURE_PROXY_SSL_HEADER=1
+```
+
+## 演示环境一键初始化
+
+容器环境变量增加：
+
+```text
+DJANGO_SEED_DEMO_DATA=1
+DEMO_ADMIN_PASSWORD=ParkPulse@2026!
+DEMO_STAFF_PASSWORD=Staff@2026!
+DEMO_VISITOR_PASSWORD=Visitor@2026!
+```
+
+可选调整演示数据规模：
+
+```text
+DJANGO_SHOWCASE_DAYS=90
+DJANGO_SHOWCASE_RECORDS_PER_DAY=120
+```
+
+容器启动顺序为：
+
+```text
+collectstatic -> migrate -> seed_showcase_data -> rebuild_heat_snapshots -> train_heat_forecast -> gunicorn
+```
+
+初始化完成后，如果不希望每次重启都检查和补齐演示数据，可以把：
+
+```text
+DJANGO_SEED_DEMO_DATA=0
+```
+
+演示账号：
+
+```text
+demo_admin   / ParkPulse@2026!
+demo_staff   / Staff@2026!
+demo_visitor / Visitor@2026!
 ```
 
 ## 本地构建验证
@@ -127,6 +165,7 @@ docker run --rm -p 8000:8000 `
   -e DJANGO_SECRET_KEY="change-me" `
   -e DJANGO_DEBUG=0 `
   -e DJANGO_ALLOWED_HOSTS="127.0.0.1,localhost" `
+  -e DJANGO_SEED_DEMO_DATA=1 `
   -v parkpulse_data:/app/data `
   -v parkpulse_media:/app/media `
   parkpulse-analytics:local
@@ -137,6 +176,7 @@ docker run --rm -p 8000:8000 `
 ```text
 http://127.0.0.1:8000/healthz/
 http://127.0.0.1:8000/
+http://127.0.0.1:8000/visitor/
 ```
 
 ## 运行策略
@@ -146,7 +186,4 @@ http://127.0.0.1:8000/
 - 上传文件保存在 `/app/media`。
 - 如需跳过启动迁移，可设置 `DJANGO_MIGRATE=0`。
 - 如需跳过静态文件收集，可设置 `DJANGO_COLLECTSTATIC=0`。
-
-## 可选 ML 依赖
-
-默认 Docker 镜像只安装 `requirements.txt`，不安装 `requirements-ml.txt`，因此 Prophet / PyTorch 不会增加基础镜像体积。系统会自动使用轻量预测模型。
+- 默认 Docker 镜像只安装 `requirements.txt`，不安装 `requirements-ml.txt`；预测会自动使用轻量模型降级运行。

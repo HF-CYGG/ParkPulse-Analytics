@@ -17,6 +17,7 @@ amusement_stats/offline_packages/
 # Django local runtime data
 amusement_stats/db.sqlite3
 amusement_stats/*.sqlite3
+amusement_stats/*.sqlite3-journal
 amusement_stats/logs/
 amusement_stats/media/
 !amusement_stats/media/.gitkeep
