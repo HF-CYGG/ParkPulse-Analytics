@@ -21,17 +21,9 @@ from projects.models import Project
 
 from .forms import FeedbackForm, FeedbackReplyForm, VisitorProfileForm
 from .models import ItineraryPlan, VisitorFavorite, VisitorFeedback, VisitorFeedbackMessage
+from .preferences import PREFERENCE_TAG_CHOICES, clean_preference_mapping, clean_preference_string, selected_preference_tags
 from .services import public_hot_ranking
 from .weather import build_weather_tip, fetch_park_weather
-
-
-PREFERENCE_TAG_CHOICES = ("亲子", "刺激", "观光", "低排队")
-PREFERENCE_TAG_ALIASES = {
-    "family": "亲子",
-    "thrill": "刺激",
-    "view": "观光",
-    "low_queue": "低排队",
-}
 
 
 def _favorite_ids_for_user(request):
@@ -380,7 +372,7 @@ def visitor_recommendations(request):
             "age_choices": VisitorProfile.AGE_CHOICES,
             "budget_choices": VisitorProfile.CONSUMPTION_CHOICES,
             "preference_tag_choices": PREFERENCE_TAG_CHOICES,
-            "selected_preference_tags": _selected_preference_tags(profile_data["preference_tags"]),
+            "selected_preference_tags": selected_preference_tags(profile_data["preference_tags"]),
         },
     )
 
@@ -409,7 +401,7 @@ def _recommendation_profile_from_request(request) -> dict:
         profile, _ = VisitorProfile.objects.get_or_create(user=request.user)
         return {
             "age_group": profile.age_group or VisitorProfile.AGE_ADULT,
-            "preference_tags": _clean_preference_string(profile.preference_tags) or "亲子,低排队",
+            "preference_tags": clean_preference_string(profile.preference_tags) or "亲子,低排队",
             "budget_level": profile.consumption_level or VisitorProfile.CONSUMPTION_MEDIUM,
             "available_minutes": profile.available_minutes or 180,
             "budget_amount": profile.budget_amount or 0,
@@ -430,47 +422,13 @@ def _recommendation_profile_from_request(request) -> dict:
 def _recommendation_profile_from_mapping(data) -> dict:
     return {
         "age_group": (data.get("age_group") or VisitorProfile.AGE_FAMILY).strip(),
-        "preference_tags": _clean_preference_tags(data),
+        "preference_tags": clean_preference_mapping(data),
         "budget_level": (data.get("budget_level") or data.get("consumption_level") or VisitorProfile.CONSUMPTION_MEDIUM).strip(),
         "available_minutes": _bounded_int(data.get("available_minutes"), default=180, min_value=30, max_value=720),
         "budget_amount": _bounded_int(data.get("budget_amount"), default=0, min_value=0, max_value=99999),
         "with_children": _truthy(data.get("with_children")),
         "with_elderly": _truthy(data.get("with_elderly")),
     }
-
-
-def _clean_preference_tags(data) -> str:
-    raw_values = []
-    if hasattr(data, "getlist"):
-        raw_values.extend(data.getlist("preference_tags"))
-    else:
-        value = data.get("preference_tags") if hasattr(data, "get") else None
-        if isinstance(value, (list, tuple, set)):
-            raw_values.extend(value)
-        elif value:
-            raw_values.extend(str(value).replace("，", ",").split(","))
-
-    return _clean_preference_values(raw_values)
-
-
-def _clean_preference_string(value: str) -> str:
-    return _clean_preference_values(str(value or "").replace("，", ",").split(","))
-
-
-def _clean_preference_values(raw_values) -> str:
-    cleaned = []
-    for raw in raw_values:
-        tag = str(raw).strip()
-        if not tag:
-            continue
-        tag = PREFERENCE_TAG_ALIASES.get(tag.lower(), tag)
-        if tag in PREFERENCE_TAG_CHOICES and tag not in cleaned:
-            cleaned.append(tag)
-    return ",".join(cleaned)
-
-
-def _selected_preference_tags(value: str) -> list[str]:
-    return [tag for tag in _clean_preference_string(value).split(",") if tag]
 
 
 def _bounded_int(value, *, default: int, min_value: int, max_value: int) -> int:

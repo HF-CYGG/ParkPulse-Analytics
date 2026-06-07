@@ -98,10 +98,14 @@
             {% endif %}
           </div>
           <div class="mb-3">
-            <label class="form-label small d-block" for="id_preference_tags">
-              <span class="d-block mb-1">{{ profile_form.preference_tags.label }}</span>
-              {{ profile_form.preference_tags }}
-            </label>
+            <div class="form-label small d-block mb-2">{{ profile_form.preference_tags.label }}</div>
+            <div class="d-flex flex-wrap gap-2" role="group" aria-label="偏好标签">
+              {% for checkbox in profile_form.preference_tags %}
+                {{ checkbox.tag }}
+                <label class="btn btn-outline-primary btn-sm rounded-pill px-3" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
+              {% endfor %}
+            </div>
+            <div class="form-text">只能选择系统给出的标签，可多选。</div>
             {% if profile_form.preference_tags.errors %}
               <div class="invalid-feedback d-block small">{{ profile_form.preference_tags.errors.0 }}</div>
             {% endif %}

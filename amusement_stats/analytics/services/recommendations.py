@@ -178,6 +178,18 @@ def _profile_score(project: Project, profile: dict) -> float:
         score += 25 if project.project_type == Project.TYPE_VIEW else -5
     if "low_queue" in tags or "低排队" in tags:
         score += max(0, 20 - project.queue_count)
+    if "popular" in tags or "hot" in tags or "热门" in tags:
+        score += 15
+    if "low_budget" in tags or "低预算" in tags:
+        score += 18 if project.project_type in {Project.TYPE_FAMILY, Project.TYPE_VIEW} else -5
+    if "night" in tags or "夜场" in tags:
+        score += 18 if project.project_type == Project.TYPE_VIEW else 6
+    if "photo" in tags or "拍照" in tags:
+        score += 20 if project.project_type == Project.TYPE_VIEW else 4
+    if "leisure" in tags or "休闲" in tags:
+        score += 18 if project.project_type in {Project.TYPE_VIEW, Project.TYPE_FAMILY} else -8
+    if "senior" in tags or "长者友好" in tags:
+        score += 24 if project.project_type in {Project.TYPE_VIEW, Project.TYPE_FAMILY} else -12
     return max(0.0, min(100.0, score))
 
 
@@ -231,6 +243,11 @@ def _reason_for(project: Project, profile: dict, heat: dict, queue_score: float,
         parts.append("适合亲子同行")
     if profile.get("with_elderly") and project.project_type in {Project.TYPE_VIEW, Project.TYPE_FAMILY}:
         parts.append("步行和刺激强度更友好")
+    tags = str(profile.get("preference_tags") or "")
+    if "夜场" in tags and project.project_type == Project.TYPE_VIEW:
+        parts.append("适合夜场观光")
+    if "拍照" in tags and project.project_type == Project.TYPE_VIEW:
+        parts.append("适合拍照打卡")
     if queue_score >= 75:
         parts.append("当前排队压力较低")
     if rating_score >= 85:

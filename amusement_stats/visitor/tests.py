@@ -214,6 +214,41 @@ class VisitorAccountViewTests(TestCase):
         self.assertContains(response, "个人资料更新失败，请检查输入")
         self.assertContains(response, profile_form.errors["account"][0])
 
+    def test_account_page_limits_preference_tags_to_fixed_choices(self):
+        """个人资料页的偏好标签应只能从固定选项中多选，不能自由输入。"""
+
+        response = self.client.get(reverse("visitor_account"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'type="text" name="preference_tags"')
+        self.assertContains(response, 'name="preference_tags"', count=10)
+        self.assertContains(response, 'value="亲子"')
+        self.assertContains(response, 'value="夜场"')
+        self.assertContains(response, 'value="长者友好"')
+
+    def test_update_profile_filters_custom_preference_tags(self):
+        """恶意提交自定义偏好标签时，只保存系统允许的标签。"""
+
+        response = self.client.post(
+            reverse("visitor_account"),
+            {
+                "op": "update_profile",
+                "account": self.user.username,
+                "nickname": "推荐标签测试",
+                "preference_tags": ["亲子", "非法自定义标签", "夜场"],
+                "age_group": "family",
+                "consumption_level": "medium",
+                "available_minutes": "180",
+                "budget_amount": "0",
+                "email": "profile-tags@example.com",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        profile = self.user.visitor_profile
+        profile.refresh_from_db()
+        self.assertEqual(profile.preference_tags, "亲子,夜场")
+
     def test_change_password_success_keeps_login_state_and_allows_new_password_login(self):
         """密码修改成功后，应保持当前登录态，并且只允许新密码继续登录。"""
 
@@ -411,11 +446,13 @@ class VisitorRecommendationViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="preference_tags" name="preference_tags"')
-        self.assertContains(response, 'name="preference_tags"', count=4)
+        self.assertContains(response, 'name="preference_tags"', count=10)
         self.assertContains(response, 'value="亲子"')
         self.assertContains(response, 'value="刺激"')
         self.assertContains(response, 'value="观光"')
         self.assertContains(response, 'value="低排队"')
+        self.assertContains(response, 'value="夜场"')
+        self.assertContains(response, 'value="长者友好"')
 
     def test_recommendation_post_filters_custom_preference_tags(self):
         response = self.client.post(

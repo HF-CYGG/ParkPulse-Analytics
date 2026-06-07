@@ -3,9 +3,15 @@ from django.contrib.auth import get_user_model
 
 from accounts.models import VisitorProfile
 from .models import VisitorFeedback, VisitorFeedbackMessage
+from .preferences import PREFERENCE_TAG_FORM_CHOICES, clean_preference_values, selected_preference_tags
 
 
 User = get_user_model()
+
+
+class PreferenceTagsField(forms.MultipleChoiceField):
+    def clean(self, value):
+        return clean_preference_values(value or [])
 
 
 class FeedbackForm(forms.ModelForm):
@@ -62,6 +68,12 @@ class VisitorProfileForm(forms.ModelForm):
         label="手机号",
         widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "手机号"}),
     )
+    preference_tags = PreferenceTagsField(
+        required=False,
+        label="偏好标签",
+        choices=PREFERENCE_TAG_FORM_CHOICES,
+        widget=forms.CheckboxSelectMultiple(attrs={"class": "btn-check"}),
+    )
 
     class Meta:
         model = VisitorProfile
@@ -79,9 +91,6 @@ class VisitorProfileForm(forms.ModelForm):
         widgets = {
             "nickname": forms.TextInput(attrs={"class": "form-control", "placeholder": "显示昵称"}),
             "phone": forms.TextInput(attrs={"class": "form-control", "placeholder": "手机号"}),
-            "preference_tags": forms.TextInput(
-                attrs={"class": "form-control", "placeholder": "例如：亲子，低刺激，夜场"}
-            ),
             "age_group": forms.Select(attrs={"class": "form-select"}),
             "consumption_level": forms.Select(attrs={"class": "form-select"}),
             "available_minutes": forms.NumberInput(attrs={"class": "form-control", "min": 30, "step": 15}),
@@ -105,6 +114,7 @@ class VisitorProfileForm(forms.ModelForm):
         self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
         for name in [
+            "preference_tags",
             "age_group",
             "consumption_level",
             "available_minutes",
@@ -113,6 +123,8 @@ class VisitorProfileForm(forms.ModelForm):
             "with_elderly",
         ]:
             self.fields[name].required = False
+        if self.instance and self.instance.pk and not self.is_bound:
+            self.initial["preference_tags"] = selected_preference_tags(self.instance.preference_tags)
 
     def clean_account(self):
         value = self.cleaned_data["account"].strip()

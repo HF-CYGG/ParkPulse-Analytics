@@ -379,6 +379,41 @@ class Command(BaseCommand):
                 "结合观光项目和夜场活动，减少体力消耗。",
                 ["梦幻花车巡游", "摩天轮", "天空缆车", "湖畔漂流"],
             ),
+            (
+                "长者友好慢游线",
+                ItineraryPlan.AUDIENCE_ADULT,
+                "长者友好,休闲",
+                "优先安排观光与低刺激项目，减少排队和快速移动压力。",
+                ["梦幻花车巡游", "童话小火车", "摩天轮", "天空缆车"],
+            ),
+            (
+                "低预算高性价比线",
+                ItineraryPlan.AUDIENCE_FAMILY,
+                "低预算,低排队",
+                "选择等待压力较低、停留成本较低的项目，适合预算敏感游客。",
+                ["童话小火车", "旋转木马", "湖畔漂流", "梦幻花车巡游"],
+            ),
+            (
+                "夜场拍照打卡线",
+                ItineraryPlan.AUDIENCE_TEEN,
+                "夜场,拍照",
+                "串联夜间观景与拍照点位，适合傍晚后入园游客。",
+                ["梦幻花车巡游", "摩天轮", "天空缆车", "湖畔漂流"],
+            ),
+            (
+                "热门项目精华线",
+                ItineraryPlan.AUDIENCE_ADULT,
+                "热门,刺激",
+                "精选高热项目，建议配合高峰预警错峰体验。",
+                ["星际过山车", "魔法剧场", "云霄飞塔", "摩天轮"],
+            ),
+            (
+                "清凉亲水休闲线",
+                ItineraryPlan.AUDIENCE_FAMILY,
+                "休闲,亲子",
+                "围绕水上和休闲项目安排，适合午后降温与家庭停留。",
+                ["泡泡水世界", "湖畔漂流", "童话小火车", "旋转木马"],
+            ),
         ]
         for name, audience, tag, description, project_names in plans:
             plan, _ = ItineraryPlan.objects.update_or_create(
