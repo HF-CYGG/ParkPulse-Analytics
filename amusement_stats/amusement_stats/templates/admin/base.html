@@ -4,6 +4,7 @@
 <html lang="{{ LANGUAGE_CODE|default:'zh-hans' }}" dir="{{ LANGUAGE_BIDI|yesno:'rtl,ltr,auto' }}">
 <head>
   <title>{% block title %}{% endblock %}</title>
+  <link rel="icon" href="{% static 'img/favicon.svg' %}" type="image/svg+xml" />
   <link rel="stylesheet" href="{% block stylesheet %}{% static 'admin/css/base.css' %}{% endblock %}">
   {% block dark-mode-vars %}
     <link rel="stylesheet" href="{% static 'admin/css/dark_mode.css' %}">

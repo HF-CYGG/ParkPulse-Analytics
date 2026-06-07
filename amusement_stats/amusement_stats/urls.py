@@ -21,12 +21,18 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.http import JsonResponse
 from django.urls import path, include
+from django.views.generic.base import RedirectView
 
 from accounts.views import StaffLoginView
 from dashboard.views import spatial_heat
 from projects.views import queue_update_count_api
 
 urlpatterns = [
+    path(
+        "favicon.ico",
+        RedirectView.as_view(url="/static/img/favicon.svg", permanent=True),
+        name="favicon",
+    ),
     path("healthz/", lambda request: JsonResponse({"status": "ok"}), name="healthz"),
     path("admin/", admin.site.urls),
     path(

@@ -154,6 +154,9 @@ CSRF_TRUSTED_ORIGINS = [
 if os.environ.get("DJANGO_SECURE_PROXY_SSL_HEADER", "0").lower() in {"1", "true", "yes"}:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
+_cross_origin_opener_policy = os.environ.get("DJANGO_CROSS_ORIGIN_OPENER_POLICY", "").strip()
+SECURE_CROSS_ORIGIN_OPENER_POLICY = _cross_origin_opener_policy or None
+
 # Auth（使用 Django 内置登录视图）
 LOGIN_URL = "login"
 # 登录成功后的首跳由 accounts.views.login_redirect 按角色分流（staff→工作台，admin→看板）
