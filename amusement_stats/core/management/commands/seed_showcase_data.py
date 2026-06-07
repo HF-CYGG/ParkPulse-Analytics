@@ -415,6 +415,38 @@ class Command(BaseCommand):
                 ["泡泡水世界", "湖畔漂流", "童话小火车", "旋转木马"],
             ),
         ]
+        plans.extend(
+            [
+                (
+                    "室内演出避雨线",
+                    ItineraryPlan.AUDIENCE_FAMILY,
+                    "室内,演出",
+                    "优先安排室内项目与演出节点，适合雨天或高温时段保持体验稳定。",
+                    ["魔法剧场", "童话小火车", "旋转木马", "梦幻花车巡游"],
+                ),
+                (
+                    "高空观景拍照线",
+                    ItineraryPlan.AUDIENCE_ADULT,
+                    "高空,拍照",
+                    "串联高空视角和观景项目，适合拍照打卡与轻量游玩。",
+                    ["云霄飞塔", "摩天轮", "天空缆车", "梦幻花车巡游"],
+                ),
+                (
+                    "美食文创慢享线",
+                    ItineraryPlan.AUDIENCE_ADULT,
+                    "美食,文创",
+                    "用低强度项目连接餐饮和文创消费点，适合预算充足的慢游人群。",
+                    ["湖畔漂流", "天空缆车", "童话小火车", "梦幻花车巡游"],
+                ),
+                (
+                    "半日高效打卡线",
+                    ItineraryPlan.AUDIENCE_TEEN,
+                    "半日游,热门",
+                    "面向时间有限游客，优先覆盖代表性热门项目并压缩往返动线。",
+                    ["星际过山车", "魔法剧场", "摩天轮", "梦幻花车巡游"],
+                ),
+            ]
+        )
         for name, audience, tag, description, project_names in plans:
             plan, _ = ItineraryPlan.objects.update_or_create(
                 name=name,

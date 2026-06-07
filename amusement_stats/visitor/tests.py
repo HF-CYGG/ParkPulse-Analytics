@@ -7,6 +7,7 @@ from django.urls import reverse
 from accounts.models import VisitorProfile
 from projects.models import Project
 from visitor.models import ItineraryPlan, ItineraryPlanItem
+from visitor.preferences import PREFERENCE_TAG_CHOICES
 
 User = get_user_model()
 
@@ -134,6 +135,24 @@ class VisitorItineraryViewTests(TestCase):
         self.assertNotIn("map_default_lng", response.context)
         self.assertNotIn("fallback_count", response.context)
 
+    def test_itinerary_filter_uses_fixed_preference_choices(self):
+        """行程规划筛选只展示系统已有偏好标签，历史自定义标签不能进入下拉框。"""
+
+        ItineraryPlan.objects.create(
+            name="历史非法标签路线",
+            audience=ItineraryPlan.AUDIENCE_ADULT,
+            preference_tag="历史自定义标签",
+            is_active=True,
+        )
+
+        response = self.client.get(reverse("visitor_itinerary"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(tuple(response.context["preference_options"]), PREFERENCE_TAG_CHOICES)
+        self.assertContains(response, 'value="亲子"')
+        self.assertContains(response, 'value="室内"')
+        self.assertNotContains(response, 'value="历史自定义标签"')
+
 
 class VisitorAccountViewTests(TestCase):
     """游客端个人中心测试。"""
@@ -221,10 +240,13 @@ class VisitorAccountViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'type="text" name="preference_tags"')
-        self.assertContains(response, 'name="preference_tags"', count=10)
+        self.assertContains(response, 'name="preference_tags"', count=len(PREFERENCE_TAG_CHOICES))
+        self.assertGreaterEqual(len(PREFERENCE_TAG_CHOICES), 16)
         self.assertContains(response, 'value="亲子"')
         self.assertContains(response, 'value="夜场"')
         self.assertContains(response, 'value="长者友好"')
+        self.assertContains(response, 'value="室内"')
+        self.assertContains(response, 'value="演出"')
 
     def test_update_profile_filters_custom_preference_tags(self):
         """恶意提交自定义偏好标签时，只保存系统允许的标签。"""
@@ -446,13 +468,16 @@ class VisitorRecommendationViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'id="preference_tags" name="preference_tags"')
-        self.assertContains(response, 'name="preference_tags"', count=10)
+        self.assertContains(response, 'name="preference_tags"', count=len(PREFERENCE_TAG_CHOICES))
+        self.assertGreaterEqual(len(PREFERENCE_TAG_CHOICES), 16)
         self.assertContains(response, 'value="亲子"')
         self.assertContains(response, 'value="刺激"')
         self.assertContains(response, 'value="观光"')
         self.assertContains(response, 'value="低排队"')
         self.assertContains(response, 'value="夜场"')
         self.assertContains(response, 'value="长者友好"')
+        self.assertContains(response, 'value="室内"')
+        self.assertContains(response, 'value="演出"')
 
     def test_recommendation_post_filters_custom_preference_tags(self):
         response = self.client.post(

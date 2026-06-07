@@ -6,6 +6,7 @@ from django.urls import reverse
 
 from projects.models import Project
 from visitor.models import ItineraryPlan, ItineraryPlanItem
+from visitor.preferences import PREFERENCE_TAG_CHOICES
 
 User = get_user_model()
 
@@ -109,3 +110,34 @@ class ItineraryPlanManageViewTests(TestCase):
         self.assertNotIn("plan_cards", response.context)
         self.assertNotIn("map_default_lat", response.context)
         self.assertNotIn("map_default_lng", response.context)
+
+    def test_manage_page_limits_plan_preference_to_fixed_choices(self):
+        """管理端新增行程模板时，偏好标签只能从系统标签中选择。"""
+
+        response = self.client.get(reverse("itinerary_plan_manage"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="createPlanPreference"')
+        self.assertContains(response, 'name="preference_tag"')
+        self.assertNotContains(response, 'type="text" name="preference_tag"')
+        self.assertContains(response, 'name="preference_tag"', count=1)
+        self.assertGreaterEqual(len(response.context["preference_tag_choices"]), 16)
+        self.assertEqual(tuple(response.context["preference_tag_choices"]), PREFERENCE_TAG_CHOICES)
+
+    def test_create_plan_filters_custom_preference_tag(self):
+        """管理端恶意提交自定义偏好标签时，不应保存非法标签。"""
+
+        response = self.client.post(
+            reverse("itinerary_plan_manage"),
+            {
+                "op": "create_plan",
+                "name": "非法标签测试路线",
+                "audience": ItineraryPlan.AUDIENCE_FAMILY,
+                "preference_tag": "自定义非法标签",
+                "description": "应过滤非法偏好标签",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        plan = ItineraryPlan.objects.get(name="非法标签测试路线")
+        self.assertEqual(plan.preference_tag, "")

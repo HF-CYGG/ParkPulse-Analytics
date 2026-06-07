@@ -449,6 +449,8 @@ def visitor_itinerary(request):
     plans = ItineraryPlan.objects.filter(is_active=True).prefetch_related("items__project").order_by("name")
     audience = request.GET.get("audience", "").strip()
     preference = request.GET.get("preference", "").strip()
+    if preference and preference not in PREFERENCE_TAG_CHOICES:
+        preference = ""
     if audience:
         plans = plans.filter(audience=audience)
     if preference:
@@ -466,12 +468,7 @@ def visitor_itinerary(request):
             }
         )
 
-    preference_options = list(
-        ItineraryPlan.objects.exclude(preference_tag="")
-        .values_list("preference_tag", flat=True)
-        .distinct()
-        .order_by("preference_tag")
-    )
+    preference_options = PREFERENCE_TAG_CHOICES
     return render(
         request,
         "visitor/itinerary.html",

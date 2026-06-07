@@ -35,7 +35,13 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="createPlanPreference">偏好标签</label>
-              <input class="form-control" id="createPlanPreference" type="text" name="preference_tag" placeholder="例如：亲子/刺激">
+              <select class="form-select" id="createPlanPreference" name="preference_tag">
+                <option value="">不限偏好</option>
+                {% for tag in preference_tag_choices %}
+                  <option value="{{ tag }}">{{ tag }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">只能选择系统已有偏好标签，不能自行输入。</div>
             </div>
             <div class="col-12">
               <label class="form-label" for="createPlanDescription">说明</label>

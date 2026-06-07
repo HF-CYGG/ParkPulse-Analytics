@@ -11,6 +11,14 @@ PREFERENCE_TAG_CHOICES = (
     "拍照",
     "休闲",
     "长者友好",
+    "室内",
+    "演出",
+    "水上",
+    "美食",
+    "文创",
+    "高空",
+    "雨天友好",
+    "半日游",
 )
 
 PREFERENCE_TAG_FORM_CHOICES = [(tag, tag) for tag in PREFERENCE_TAG_CHOICES]
@@ -18,16 +26,32 @@ PREFERENCE_TAG_FORM_CHOICES = [(tag, tag) for tag in PREFERENCE_TAG_CHOICES]
 PREFERENCE_TAG_ALIASES = {
     "family": "亲子",
     "parent_child": "亲子",
+    "child": "亲子",
+    "kids": "亲子",
     "thrill": "刺激",
+    "exciting": "刺激",
     "view": "观光",
+    "sightseeing": "观光",
     "photo": "拍照",
     "low_queue": "低排队",
     "popular": "热门",
     "hot": "热门",
     "low_budget": "低预算",
+    "budget": "低预算",
     "night": "夜场",
     "leisure": "休闲",
     "senior": "长者友好",
+    "indoor": "室内",
+    "show": "演出",
+    "performance": "演出",
+    "water": "水上",
+    "food": "美食",
+    "retail": "文创",
+    "creative": "文创",
+    "height": "高空",
+    "sky": "高空",
+    "rain": "雨天友好",
+    "half_day": "半日游",
 }
 
 

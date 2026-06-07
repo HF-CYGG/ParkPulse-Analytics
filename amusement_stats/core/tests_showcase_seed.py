@@ -44,7 +44,7 @@ class ShowcaseSeedCommandTests(TestCase):
         self.assertGreaterEqual(MaintenanceWorkOrder.objects.count(), 3)
         self.assertGreaterEqual(HolidayCalendar.objects.count(), 7)
         self.assertGreaterEqual(WeatherObservation.objects.count(), 8)
-        self.assertGreaterEqual(ItineraryPlan.objects.filter(is_active=True).count(), 8)
+        self.assertGreaterEqual(ItineraryPlan.objects.filter(is_active=True).count(), 12)
         self.assertGreaterEqual(VisitorFavorite.objects.filter(user=visitor).count(), 3)
         self.assertTrue(VisitorProfile.objects.filter(user=visitor, with_children=True).exists())
         self.assertTrue(VisitorFeedback.objects.filter(user=visitor).exists())

@@ -10,6 +10,7 @@ from core.audit import log_action
 from core.models import AuditLog, SiteConfig
 from projects.models import Project
 from visitor.models import ItineraryPlan, ItineraryPlanItem, VisitorFeedback, VisitorFeedbackMessage
+from visitor.preferences import PREFERENCE_TAG_CHOICES, clean_preference_values
 
 
 def _parse_feedback_or_redirect(request):
@@ -134,7 +135,7 @@ def _create_itinerary_plan(request):
 
     name = request.POST.get("name", "").strip()
     audience = request.POST.get("audience", ItineraryPlan.AUDIENCE_FAMILY).strip()
-    preference_tag = request.POST.get("preference_tag", "").strip()
+    preference_tag = clean_preference_values([request.POST.get("preference_tag", "").strip()])
     description = request.POST.get("description", "").strip()
     if not name:
         messages.error(request, "方案名称不能为空")
@@ -388,5 +389,6 @@ def itinerary_plan_manage(request):
             "plans": plans,
             "projects": projects,
             "audience_choices": ItineraryPlan.AUDIENCE_CHOICES,
+            "preference_tag_choices": PREFERENCE_TAG_CHOICES,
         },
     )
