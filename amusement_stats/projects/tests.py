@@ -1,8 +1,12 @@
-"""项目模块测试：用于验证项目管理流程中的创建、列表与状态切换行为。"""
+"""项目模块测试：覆盖项目管理中的创建、编辑、状态切换与地图组件行为。"""
 
+import base64
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import TestCase
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from core.auth_utils import STAFF_GROUP
@@ -21,7 +25,7 @@ class ProjectManagementFlowTests(TestCase):
     """项目管理流程测试。"""
 
     def setUp(self):
-        """创建工作人员账号，确保项目管理页按真实权限访问。"""
+        """创建工作人员账号。"""
 
         self.staff_group, _ = Group.objects.get_or_create(name=STAFF_GROUP)
         self.staff_user = User.objects.create_user(
@@ -75,8 +79,60 @@ class ProjectManagementFlowTests(TestCase):
         self.project.refresh_from_db()
         self.assertEqual(self.project.status, Project.STATUS_MAINTENANCE)
 
+    def test_project_cover_storage_settings_are_configured_for_uploads(self):
+        """项目封面上传需要默认文件存储和绝对媒体 URL。"""
+
+        self.assertEqual(settings.STORAGES["default"]["BACKEND"], "django.core.files.storage.FileSystemStorage")
+        self.assertEqual(settings.MEDIA_URL, "/media/")
+        self.assertTrue(settings.SERVE_MEDIA_FILES)
+
+    @override_settings(
+        STORAGES={
+            "default": {
+                "BACKEND": "django.core.files.storage.InMemoryStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
+            },
+        }
+    )
+    def test_project_edit_uploads_cover_image_with_absolute_media_url(self):
+        """项目编辑页应能保存封面图，并生成可在当前页面直接访问的媒体路径。"""
+
+        tiny_png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+        )
+        upload = SimpleUploadedFile("cover.png", tiny_png, content_type="image/png")
+
+        response = self.client.post(
+            reverse("project_edit", args=[self.project.id]),
+            {
+                "name": self.project.name,
+                "project_type": self.project.project_type,
+                "region": self.project.region,
+                "status": self.project.status,
+                "capacity": self.project.capacity,
+                "daily_warn_threshold": self.project.daily_warn_threshold,
+                "queue_count": self.project.queue_count,
+                "cycle_minutes": self.project.cycle_minutes,
+                "operating_hours_text": self.project.operating_hours_text,
+                "short_description": "Cover upload smoke",
+                "latitude": "31.232000",
+                "longitude": "121.502000",
+                "cover_image": upload,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.project.refresh_from_db()
+        self.assertTrue(self.project.cover_image.name.startswith("project_covers/"))
+        self.assertTrue(self.project.cover_image.url.startswith("/media/project_covers/"))
+
+        edit_response = self.client.get(reverse("project_edit", args=[self.project.id]))
+        self.assertContains(edit_response, 'src="/media/project_covers/')
+
     def test_project_edit_page_uses_shared_leaflet_tile_map(self):
-        """项目编辑页地图应与游客端园区地图统一使用 Leaflet 在线瓦片和图层切换。"""
+        """项目编辑页地图应统一使用 Leaflet 在线瓦片和图层切换。"""
 
         response = self.client.get(reverse("project_edit", args=[self.project.id]))
 

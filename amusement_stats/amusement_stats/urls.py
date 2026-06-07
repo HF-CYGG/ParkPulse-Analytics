@@ -20,12 +20,20 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.http import JsonResponse
-from django.urls import path, include
+from django.urls import include, path, re_path
+from django.views.static import serve
 from django.views.generic.base import RedirectView
 
 from accounts.views import StaffLoginView
 from dashboard.views import spatial_heat
 from projects.views import queue_update_count_api
+
+
+def serve_media_file(request, path):
+    """Serve uploaded files for the single-container demo deployment."""
+
+    return serve(request, path, document_root=settings.MEDIA_ROOT)
+
 
 urlpatterns = [
     path(
@@ -52,5 +60,9 @@ urlpatterns = [
     path("api/queue/project/<int:project_id>/update-count/", queue_update_count_api, name="queue_update_count_api"),
 ]
 
-if settings.DEBUG:
+if settings.SERVE_MEDIA_FILES:
+    urlpatterns += [
+        re_path(r"^media/(?P<path>.*)$", serve_media_file, name="media"),
+    ]
+elif settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -136,14 +136,18 @@ STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "amusement_stats" / "static"]
 STATIC_ROOT = os.environ.get("DJANGO_STATIC_ROOT", str(BASE_DIR / "staticfiles"))
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedStaticFilesStorage",
     },
 }
 
 # 用户上传（项目封面等），开发环境由 urls 暴露
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = os.environ.get("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media"))
+SERVE_MEDIA_FILES = os.environ.get("DJANGO_SERVE_MEDIA_FILES", "1").lower() not in {"0", "false", "no"}
 
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
