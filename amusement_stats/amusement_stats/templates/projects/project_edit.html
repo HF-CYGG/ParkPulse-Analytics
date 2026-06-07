@@ -88,7 +88,20 @@
               data-init-lng="{{ map_init_lng }}"
               data-default-lat="{{ map_default_lat }}"
               data-default-lng="{{ map_default_lng }}"
-            ></div>
+            >
+              <div class="project-map-offline-base" aria-hidden="true">
+                <span class="project-map-zone zone-entrance">入口区</span>
+                <span class="project-map-zone zone-family">亲子区</span>
+                <span class="project-map-zone zone-thrill">刺激区</span>
+                <span class="project-map-zone zone-view">观光区</span>
+                <span class="project-map-zone zone-rest">休闲区</span>
+                <span class="project-map-zone zone-catering">餐饮配套</span>
+                <span class="project-map-path path-main"></span>
+                <span class="project-map-path path-loop"></span>
+                <span class="project-map-river"></span>
+                <span class="project-map-caption">离线园区示意底图</span>
+              </div>
+            </div>
             <div class="d-flex flex-wrap gap-2 mt-2 align-items-center">
               <button type="button" class="btn btn-sm btn-outline-secondary" id="project-map-use-region">
                 使用当前「所属区域」参考位置

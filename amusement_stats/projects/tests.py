@@ -82,4 +82,6 @@ class ProjectManagementFlowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "webrd0{s}.is.autonavi.com")
+        self.assertNotContains(response, "tileLayer")
+        self.assertContains(response, "project-map-offline-base")
         self.assertContains(response, "若当前网络无法访问在线底图，仍可在离线底板上选点")

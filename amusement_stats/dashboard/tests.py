@@ -88,6 +88,9 @@ class DashboardFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "spatialHeatData")
         self.assertContains(response, "spatialHeatCanvas")
+        self.assertContains(response, "spatial-map-viewport")
+        self.assertContains(response, "data-map-x")
+        self.assertContains(response, "data-map-y")
         self.assertContains(response, "spatialTimeSlider")
 
     def test_predict_api_returns_dashboard_display_fields(self):

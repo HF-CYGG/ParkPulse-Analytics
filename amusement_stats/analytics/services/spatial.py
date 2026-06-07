@@ -30,6 +30,7 @@ def build_spatial_heat_payload(*, days: int = 7) -> dict:
                 "metrics": row["metrics"],
             }
         )
+    _apply_map_layout(markers)
     return {"items": markers, "max_score": max((item["score"] for item in markers), default=0)}
 
 
@@ -84,6 +85,35 @@ def _facility_heat(row: dict, project_lat: float, project_lng: float) -> list[di
         )
     items.sort(key=lambda item: item["linked_heat"], reverse=True)
     return items[:8]
+
+
+def _apply_map_layout(markers: list[dict]) -> None:
+    if not markers:
+        return
+    all_points = [(item["lat"], item["lng"]) for item in markers]
+    for item in markers:
+        all_points.extend((facility["lat"], facility["lng"]) for facility in item["facilities"])
+    lats = [float(lat) for lat, _ in all_points]
+    lngs = [float(lng) for _, lng in all_points]
+    min_lat, max_lat = min(lats), max(lats)
+    min_lng, max_lng = min(lngs), max(lngs)
+
+    def project_point(lat: float, lng: float) -> tuple[float, float]:
+        x = _scale_to_canvas(float(lng), min_lng, max_lng)
+        y = 100 - _scale_to_canvas(float(lat), min_lat, max_lat)
+        return round(x, 2), round(y, 2)
+
+    for item in markers:
+        item["map_x_pct"], item["map_y_pct"] = project_point(item["lat"], item["lng"])
+        item["diameter_px"] = round(max(56, min(104, 44 + float(item["score"]) * 0.75)), 1)
+        for facility in item["facilities"]:
+            facility["map_x_pct"], facility["map_y_pct"] = project_point(facility["lat"], facility["lng"])
+
+
+def _scale_to_canvas(value: float, minimum: float, maximum: float) -> float:
+    if maximum == minimum:
+        return 50.0
+    return 20 + ((value - minimum) / (maximum - minimum)) * 60
 
 
 def _facility_latlng(facility: ServiceFacility, fallback_lat: float, fallback_lng: float) -> tuple[float, float]:

@@ -20,13 +20,25 @@
             <label class="small text-muted mb-0" for="spatialTimeSlider">时间轴 <span id="spatialTimeLabel">当前</span></label>
           </div>
           <input class="form-range" id="spatialTimeSlider" type="range" min="0" max="6" step="1" value="0">
-          <div id="spatialHeatCanvas" class="position-relative border rounded-3 bg-light overflow-hidden mb-3" style="height: 360px;">
+          <div id="spatialHeatCanvas" class="spatial-map-viewport position-relative border rounded-3 mb-3">
             {% for item in payload.items %}
-              <button class="position-absolute border-0 rounded-circle text-white spatial-map-node" type="button" data-project-id="{{ item.project_id }}" style="left: {{ forloop.counter0|add:1 }}0%; top: {% cycle '20' '45' '68' '32' '58' %}%; width: {{ item.radius|floatformat:0 }}px; height: {{ item.radius|floatformat:0 }}px; max-width: 120px; max-height: 120px; min-width: 42px; min-height: 42px; background: rgba(220,53,69,.55); transform: translate(-50%, -50%);">
+              <button
+                class="position-absolute border-0 rounded-circle text-white spatial-map-node"
+                type="button"
+                data-project-id="{{ item.project_id }}"
+                data-map-x="{{ item.map_x_pct }}"
+                data-map-y="{{ item.map_y_pct }}"
+                data-radius="{{ item.radius }}"
+                style="left: {{ item.map_x_pct }}%; top: {{ item.map_y_pct }}%; width: {{ item.diameter_px }}px; height: {{ item.diameter_px }}px;"
+              >
                 {{ item.score }}
               </button>
               {% for facility in item.facilities %}
-                <span class="position-absolute rounded-circle bg-success spatial-facility-node" title="{{ facility.name }}" style="left: {{ forloop.counter|add:6 }}0%; top: {% cycle '30' '62' '48' %}%; width: 12px; height: 12px;"></span>
+                <span
+                  class="position-absolute rounded-circle spatial-facility-node"
+                  title="{{ facility.name }}"
+                  style="left: {{ facility.map_x_pct }}%; top: {{ facility.map_y_pct }}%;"
+                ></span>
               {% endfor %}
             {% endfor %}
           </div>
