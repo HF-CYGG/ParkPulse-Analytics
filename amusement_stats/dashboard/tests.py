@@ -77,6 +77,9 @@ class DashboardFlowTests(TestCase):
         self.assertContains(response, "forecastDaySlider")
         self.assertContains(response, "forecastTimelineBody")
         self.assertContains(response, "predictTableBody")
+        self.assertContains(response, 'id="refreshEvaluationButton"')
+        self.assertContains(response, 'id="evaluationTableBody"')
+        self.assertNotContains(response, 'href="/analytics/api/forecast-evaluation/?refresh=1"')
         self.assertContains(response, self.project.name)
 
     def test_spatial_heat_page_renders_for_admin(self):

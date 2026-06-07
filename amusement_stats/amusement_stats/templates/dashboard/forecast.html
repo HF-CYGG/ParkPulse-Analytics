@@ -89,7 +89,12 @@
         <h5>预测明细与模型评估</h5>
         <p>预测表使用 `/api/predict/` 刷新，评估表展示最近一次 MAE/MSE/R2 结果。</p>
       </div>
-      <a class="btn btn-sm btn-outline-primary" href="/analytics/api/forecast-evaluation/?refresh=1" target="_blank">刷新评估 API</a>
+      <button
+        class="btn btn-sm btn-outline-primary"
+        id="refreshEvaluationButton"
+        type="button"
+        data-url="/analytics/api/forecast-evaluation/?refresh=1"
+      >刷新评估</button>
     </div>
     <div class="row g-3">
       <div class="col-xl-7">
@@ -115,7 +120,7 @@
           <div class="table-responsive">
             <table class="table table-sm table-hover align-middle mb-0">
               <thead class="table-light"><tr><th>项目</th><th>模型</th><th>MAE</th><th>MSE</th><th>R2</th></tr></thead>
-              <tbody>
+              <tbody id="evaluationTableBody">
                 {% for row in evaluation_rows %}
                   <tr><td>{{ row.project_name }}</td><td>{{ row.model_name }}</td><td>{{ row.mae }}</td><td>{{ row.mse }}</td><td>{{ row.r2 }}</td></tr>
                 {% empty %}
@@ -214,6 +219,36 @@
           detail.innerHTML = "<strong>" + escapeHtml(item.project_name) + "</strong>：热度 " + item.score + "，辐射半径 " + item.radius + " 米；" + linked;
         });
       });
+      const refreshEvaluationButton = document.getElementById("refreshEvaluationButton");
+      const evaluationTableBody = document.getElementById("evaluationTableBody");
+      function renderEvaluationRows(rows) {
+        if (!evaluationTableBody) return;
+        evaluationTableBody.innerHTML = rows.length ? rows.map(function (row) {
+          return "<tr><td>" + escapeHtml(row.project_name || "-") + "</td><td>" + escapeHtml(row.model_name || "-") + "</td><td>" + (row.mae ?? "-") + "</td><td>" + (row.mse ?? "-") + "</td><td>" + (row.r2 ?? "-") + "</td></tr>";
+        }).join("") : "<tr><td colspan=\"5\" class=\"text-center text-muted py-3\">暂无评估结果。</td></tr>";
+      }
+      if (refreshEvaluationButton && evaluationTableBody) {
+        refreshEvaluationButton.addEventListener("click", function () {
+          const originalText = refreshEvaluationButton.textContent;
+          refreshEvaluationButton.disabled = true;
+          refreshEvaluationButton.textContent = "刷新中...";
+          fetch(refreshEvaluationButton.dataset.url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+            .then(function (response) {
+              if (!response.ok) throw new Error("HTTP " + response.status);
+              return response.json();
+            })
+            .then(function (payload) {
+              renderEvaluationRows(((payload || {}).data || {}).items || []);
+            })
+            .catch(function () {
+              evaluationTableBody.innerHTML = "<tr><td colspan=\"5\" class=\"text-center text-danger py-3\">评估刷新失败，请稍后重试。</td></tr>";
+            })
+            .finally(function () {
+              refreshEvaluationButton.disabled = false;
+              refreshEvaluationButton.textContent = originalText;
+            });
+        });
+      }
     })();
   </script>
 {% endblock %}
