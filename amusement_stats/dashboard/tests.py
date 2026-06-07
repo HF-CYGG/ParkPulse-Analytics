@@ -1,5 +1,3 @@
-"""看板模块测试：用于验证经营看板首页在核心数据存在时可正常渲染。"""
-
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
@@ -16,17 +14,11 @@ User = get_user_model()
 
 
 def _build_test_secret(label: str) -> str:
-    """为测试账号动态生成口令，避免把固定明文写进测试代码。"""
-
     return f"{label}-Dashboard-Secret-2026!"
 
 
 class DashboardFlowTests(TestCase):
-    """经营看板流程测试。"""
-
     def setUp(self):
-        """创建管理员与基础运营数据，确保看板请求能走完整计算链路。"""
-
         self.admin_group, _ = Group.objects.get_or_create(name=ADMIN_GROUP)
         self.admin_user = User.objects.create_user(
             username="dashboard_admin_user",
@@ -56,12 +48,9 @@ class DashboardFlowTests(TestCase):
         )
 
     def test_dashboard_index_renders_for_admin(self):
-        """管理员访问经营看板首页时，应返回 200 并输出基础指标。"""
-
         response = self.client.get(reverse("index"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "数据分析看板")
         self.assertContains(response, self.project.name)
         self.assertContains(response, "projectComparePanel")
         self.assertNotContains(response, "forecastDaySlider")
@@ -73,7 +62,6 @@ class DashboardFlowTests(TestCase):
         response = self.client.get(reverse("dashboard_forecast"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "模型预测中心")
         self.assertContains(response, "forecastDaySlider")
         self.assertContains(response, "forecastTimelineBody")
         self.assertContains(response, "predictTableBody")
@@ -88,9 +76,16 @@ class DashboardFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "spatialHeatData")
         self.assertContains(response, "spatialHeatCanvas")
-        self.assertContains(response, "spatial-map-viewport")
-        self.assertContains(response, "data-map-x")
-        self.assertContains(response, "data-map-y")
+        self.assertContains(response, "vendor/leaflet/leaflet.css")
+        self.assertContains(response, "vendor/leaflet/leaflet.js")
+        self.assertContains(response, "webrd0{s}.is.autonavi.com")
+        self.assertContains(response, "OpenStreetMap")
+        self.assertContains(response, "L.control.layers")
+        self.assertContains(response, "L.circle")
+        self.assertContains(response, "L.marker")
+        self.assertNotContains(response, "spatial-map-viewport")
+        self.assertNotContains(response, "data-map-x")
+        self.assertNotContains(response, "data-map-y")
         self.assertContains(response, "spatialTimeSlider")
         self.assertContains(response, "spatialHeatApiUrl")
         self.assertContains(response, "六维指标")

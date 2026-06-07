@@ -1,12 +1,63 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}空间热度辐射 - ParkPulse Analytics{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">
+  <style>
+    .spatial-leaflet-map {
+      min-height: 560px;
+      height: min(62vh, 680px);
+      width: 100%;
+      overflow: hidden;
+      background: #eef4fb;
+    }
+
+    .spatial-leaflet-map .leaflet-control-layers {
+      border-radius: 8px;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
+    }
+
+    .spatial-heat-project-marker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: #1976d2;
+      border: 3px solid #fff;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.28);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .spatial-heat-facility-marker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #0f9f6e;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 8px rgba(15, 159, 110, 0.16);
+    }
+
+    body.dark-theme .spatial-leaflet-map {
+      background: #0f172a;
+    }
+  </style>
+{% endblock %}
 
 {% block content %}
   <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
     <div>
       <h1 class="h3 fw-bold mb-1">空间热度辐射</h1>
-      <div class="text-muted small">项目热度圆、周边设施连带热度、六维指标和高峰预警联动。</div>
+      <div class="text-muted small">项目热度圈、周边设施连带热度、六维指标和高峰预警联动。</div>
     </div>
     <a class="btn btn-outline-primary btn-sm" href="{% url 'index' %}">返回看板</a>
   </div>
@@ -17,11 +68,14 @@
       <div class="card shadow-sm border-0">
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-center mb-3">
-            <h2 class="h5 fw-bold mb-0">项目热度圆</h2>
+            <div>
+              <h2 class="h5 fw-bold mb-1">园区地图</h2>
+              <div class="text-muted small">与游客端园区地图保持一致，叠加热度辐射圈与设施连带热度。</div>
+            </div>
             <label class="small text-muted mb-0" for="spatialTimeSlider">时间轴 <span id="spatialTimeLabel">{{ payload.target_date|default:"当前" }}</span></label>
           </div>
           <input class="form-range" id="spatialTimeSlider" type="range" min="0" max="6" step="1" value="0">
-          <div id="spatialHeatCanvas" class="spatial-map-viewport position-relative border rounded-3 mb-3"></div>
+          <div id="spatialHeatCanvas" class="spatial-leaflet-map border rounded-3 mb-3"></div>
           <div class="list-group" id="spatialHeatDataList"></div>
         </div>
       </div>
@@ -37,16 +91,24 @@
   </div>
 
   {{ payload.items|json_script:"spatialHeatData" }}
+{% endblock %}
+
+{% block scripts %}
+  <script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
   <script>
     (function () {
       let data = JSON.parse(document.getElementById("spatialHeatData").textContent || "[]");
       const apiNode = document.getElementById("spatialHeatApiUrl");
       const apiUrl = apiNode ? apiNode.dataset.url : "/analytics/api/heat/spatial/";
-      const canvas = document.getElementById("spatialHeatCanvas");
+      const mapNode = document.getElementById("spatialHeatCanvas");
       const list = document.getElementById("spatialHeatDataList");
       const detail = document.getElementById("spatialHeatDetail");
       const label = document.getElementById("spatialTimeLabel");
       const slider = document.getElementById("spatialTimeSlider");
+      const defaultCenter = [31.2384, 121.4778];
+      let map = null;
+      let heatLayer = null;
+      let markerLayer = null;
 
       function escapeHtml(value) {
         return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
@@ -54,14 +116,109 @@
         });
       }
 
-      function render() {
-        if (!canvas || !list) return;
-        canvas.innerHTML = data.map(function (item) {
-          const facilities = (item.facilities || []).map(function (facility) {
-            return '<span class="position-absolute rounded-circle spatial-facility-node" title="' + escapeHtml(facility.name) + '" style="left:' + facility.map_x_pct + '%;top:' + facility.map_y_pct + '%;"></span>';
-          }).join("");
-          return '<button class="position-absolute border-0 rounded-circle text-white spatial-map-node" type="button" data-project-id="' + item.project_id + '" data-map-x="' + item.map_x_pct + '" data-map-y="' + item.map_y_pct + '" data-radius="' + item.radius + '" style="left:' + item.map_x_pct + '%;top:' + item.map_y_pct + '%;width:' + item.diameter_px + 'px;height:' + item.diameter_px + 'px;">' + item.score + '</button>' + facilities;
-        }).join("");
+      function initMap() {
+        if (!mapNode || map || typeof L === "undefined") {
+          if (mapNode && typeof L === "undefined") {
+            mapNode.innerHTML = '<div class="p-4 text-danger">Leaflet 地图库加载失败，无法显示地图。</div>';
+          }
+          return;
+        }
+        const gaode = L.tileLayer(
+          "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}",
+          {
+            subdomains: "1234",
+            attribution: '&copy; <a href="https://ditu.amap.com/" target="_blank">高德地图</a>',
+            maxZoom: 19,
+          }
+        );
+        const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        });
+        map = L.map(mapNode, { center: defaultCenter, zoom: 15, layers: [osm], scrollWheelZoom: true });
+        L.control.layers(
+          {
+            "高德路网（中文标注）": gaode,
+            "OpenStreetMap（英文标注）": osm,
+          },
+          {},
+          { collapsed: false, position: "topright" }
+        ).addTo(map);
+        heatLayer = L.layerGroup().addTo(map);
+        markerLayer = L.layerGroup().addTo(map);
+      }
+
+      function markerIcon(item) {
+        return L.divIcon({
+          className: "",
+          html: '<span class="spatial-heat-project-marker">' + escapeHtml(item.score) + '</span>',
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+        });
+      }
+
+      function facilityIcon() {
+        return L.divIcon({
+          className: "",
+          html: '<span class="spatial-heat-facility-marker"></span>',
+          iconSize: [18, 18],
+          iconAnchor: [9, 9],
+        });
+      }
+
+      function heatColor(score) {
+        if (score >= 80) return "#dc2626";
+        if (score >= 65) return "#ef4444";
+        if (score >= 50) return "#f97316";
+        return "#0ea5e9";
+      }
+
+      function renderMap() {
+        initMap();
+        if (!map || !heatLayer || !markerLayer) return;
+        heatLayer.clearLayers();
+        markerLayer.clearLayers();
+        const bounds = [];
+        data.forEach(function (item) {
+          if (typeof item.lat !== "number" || typeof item.lng !== "number") return;
+          const latLng = [item.lat, item.lng];
+          const color = heatColor(Number(item.score || 0));
+          bounds.push(latLng);
+          L.circle(latLng, {
+            radius: Number(item.radius || 120),
+            color: color,
+            weight: 2,
+            opacity: 0.55,
+            fillColor: color,
+            fillOpacity: 0.24,
+          }).addTo(heatLayer);
+          L.marker(latLng, { icon: markerIcon(item), title: item.project_name })
+            .addTo(markerLayer)
+            .bindTooltip(item.project_name + " 热度 " + item.score, { direction: "top", sticky: false })
+            .on("click", function () {
+              setActiveItem(item.project_id);
+              renderDetail(item);
+            });
+          (item.facilities || []).forEach(function (facility) {
+            if (typeof facility.lat !== "number" || typeof facility.lng !== "number") return;
+            const facilityLatLng = [facility.lat, facility.lng];
+            bounds.push(facilityLatLng);
+            L.marker(facilityLatLng, { icon: facilityIcon(), title: facility.name })
+              .addTo(markerLayer)
+              .bindTooltip(facility.name + " 连带热度 " + facility.linked_heat, { direction: "top", sticky: false });
+          });
+        });
+        if (bounds.length > 1) {
+          map.fitBounds(bounds, { padding: [36, 36], maxZoom: 16 });
+        } else if (bounds.length === 1) {
+          map.setView(bounds[0], 16);
+        } else {
+          map.setView(defaultCenter, 15);
+        }
+      }
+
+      function renderList() {
+        if (!list) return;
         list.innerHTML = data.length ? data.map(function (item) {
           return '<button class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" type="button" data-project-id="' + item.project_id + '"><span>' + escapeHtml(item.project_name) + '</span><span class="badge text-bg-primary">' + item.score + '</span></button>';
         }).join("") : '<div class="text-muted small">暂无热度数据。</div>';
@@ -98,13 +255,30 @@
           (reasons ? '<ul class="mb-0 ps-3">' + reasons + '</ul>' : '');
       }
 
+      function setActiveItem(projectId) {
+        document.querySelectorAll("#spatialHeatDataList [data-project-id]").forEach(function (node) {
+          node.classList.toggle("active", Number(node.dataset.projectId) === Number(projectId));
+        });
+      }
+
       function bindClicks() {
-        document.querySelectorAll("#spatialHeatDataList [data-project-id], .spatial-map-node").forEach(function (button) {
+        document.querySelectorAll("#spatialHeatDataList [data-project-id]").forEach(function (button) {
           button.addEventListener("click", function () {
             const id = Number(button.dataset.projectId);
-            renderDetail(data.find(function (row) { return row.project_id === id; }));
+            const item = data.find(function (row) { return row.project_id === id; });
+            if (!item) return;
+            setActiveItem(id);
+            renderDetail(item);
+            if (map && typeof item.lat === "number" && typeof item.lng === "number") {
+              map.setView([item.lat, item.lng], Math.max(map.getZoom(), 16), { animate: true });
+            }
           });
         });
+      }
+
+      function render() {
+        renderMap();
+        renderList();
       }
 
       function loadOffset(offset) {
@@ -116,7 +290,10 @@
             data = body.items || [];
             if (label && body.target_date) label.textContent = body.target_date;
             render();
-            if (data.length) renderDetail(data[0]);
+            if (data.length) {
+              setActiveItem(data[0].project_id);
+              renderDetail(data[0]);
+            }
           })
           .catch(function () {
             if (detail) detail.innerHTML = '<span class="text-danger">空间热度刷新失败，请稍后重试。</span>';
@@ -127,7 +304,10 @@
         slider.addEventListener("input", function () { loadOffset(Number(slider.value || 0)); });
       }
       render();
-      if (data.length) renderDetail(data[0]);
+      if (data.length) {
+        setActiveItem(data[0].project_id);
+        renderDetail(data[0]);
+      }
     })();
   </script>
 {% endblock %}
