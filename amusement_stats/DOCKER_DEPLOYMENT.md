@@ -78,6 +78,14 @@ crpi-9gmsq2s17re73ia9.cn-qingdao.personal.cr.aliyuncs.com/yyh163/parkpulse-analy
 
 容器启动脚本会自动创建并修正 `/app/data`、`/app/media`、`/app/staticfiles` 权限，再降权为 `parkpulse` 用户运行 Django。
 
+容器运行用户请保持镜像默认值，或者显式设置为：
+
+```text
+root
+```
+
+不要把容器运行用户设置为 `999`、`parkpulse` 或其他非 root 用户；否则启动脚本无法修正挂载目录权限。
+
 核心环境变量：
 
 ```text

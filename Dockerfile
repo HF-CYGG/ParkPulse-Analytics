@@ -29,6 +29,8 @@ RUN chmod +x /entrypoint.sh \
     && mkdir -p /app/data /app/media /app/staticfiles \
     && chown -R parkpulse:parkpulse /app
 
+USER root
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
