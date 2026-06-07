@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
+from accounts.models import VisitorProfile
 from projects.models import Project
 from visitor.models import ItineraryPlan, ItineraryPlanItem
 
@@ -397,6 +398,43 @@ class VisitorRecommendationServiceTests(TestCase):
         self.assertTrue(result["combos"])
         self.assertTrue(any("长者" in combo["name"] or "休闲" in combo["name"] for combo in result["combos"]))
         self.assertIn("budget_score", result["avoid_peak"][0])
+
+
+class VisitorRecommendationViewTests(TestCase):
+    def setUp(self):
+        self.password = _build_test_secret("visitor-recommend")
+        self.user = User.objects.create_user(username="visitor_recommend_user", password=self.password)
+        self.client.force_login(self.user)
+
+    def test_recommendation_page_limits_preference_tags_to_fixed_choices(self):
+        response = self.client.get(reverse("visitor_recommendations"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'id="preference_tags" name="preference_tags"')
+        self.assertContains(response, 'name="preference_tags"', count=4)
+        self.assertContains(response, 'value="亲子"')
+        self.assertContains(response, 'value="刺激"')
+        self.assertContains(response, 'value="观光"')
+        self.assertContains(response, 'value="低排队"')
+
+    def test_recommendation_post_filters_custom_preference_tags(self):
+        response = self.client.post(
+            reverse("visitor_recommendations"),
+            {
+                "age_group": VisitorProfile.AGE_FAMILY,
+                "preference_tags": ["亲子", "非法自定义标签", "低排队"],
+                "budget_level": VisitorProfile.CONSUMPTION_MEDIUM,
+                "available_minutes": "180",
+                "budget_amount": "0",
+                "with_children": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        profile = VisitorProfile.objects.get(user=self.user)
+        self.assertEqual(profile.preference_tags, "亲子,低排队")
+        self.assertEqual(response.context["profile_data"]["preference_tags"], "亲子,低排队")
+        self.assertEqual(response.context["selected_preference_tags"], ["亲子", "低排队"])
 
 
 class VisitorProjectDetailRecommendationTests(TestCase):
